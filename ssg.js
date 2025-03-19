@@ -89,7 +89,7 @@ async function main() {
     const totalPages = paginatedPosts.length;
     const paginationData = paginatedPosts.map((pagePosts, pageIndex) => {
       const pageFileName = `${pageIndex + 1}.json`;
-      const indexPath = path.join(outputDir, 'page', pageFileName);
+      const indexPath = path.join(outputDir, 'index', pageFileName);
 
       // Write the paginated posts for this index page to a file
       fs.writeFileSync(indexPath, JSON.stringify(pagePosts, null, 2));
@@ -97,8 +97,8 @@ async function main() {
       return {
         currentPage: pageIndex + 1,
         totalPages: totalPages,
-        nextPage: pageIndex + 2 <= totalPages ? `page/${pageIndex + 2}.json` : null,
-        previousPage: pageIndex > 0 ? `page/${pageIndex}.json` : null,
+        nextPage: pageIndex + 2 <= totalPages ? `index/${pageIndex + 2}.json` : null,
+        previousPage: pageIndex > 0 ? `index/${pageIndex}.json` : null,
         posts: pagePosts.map(post => ({
           id: post.id,
           title: post.title,
