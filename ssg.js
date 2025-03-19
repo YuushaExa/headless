@@ -171,7 +171,8 @@ async function main() {
         totalPages,
         nextPage: currentPage + 1 <= totalPages ? `developers/${currentPage + 1}.json` : null,
         previousPage: currentPage > 1 ? `developers/${currentPage - 1}.json` : null,
-        developers: pageDevelopers
+        developers: pageDevelopers,
+        link: `developers/${developer.id}/1.json`
       })
     };
 
