@@ -85,33 +85,31 @@ async function main() {
       fs.writeFileSync(postFilePath, JSON.stringify(post, null, 2));
     });
 
-    // Generate paginated index files and pagination metadata
-    const totalPages = paginatedPosts.length;
-    const paginationData = paginatedPosts.map((pagePosts, pageIndex) => {
-      const pageFileName = `${pageIndex + 1}.json`;
-      const indexPath = path.join(outputDir, 'index', pageFileName);
+// Generate paginated index files and pagination metadata
+const totalPages = paginatedPosts.length;
 
-      // Write the paginated posts for this index page to a file
-      fs.writeFileSync(indexPath, JSON.stringify(pagePosts, null, 2));
+paginatedPosts.forEach((pagePosts, pageIndex) => {
+  const pageFileName = `${pageIndex + 1}.json`;
+  const indexPath = path.join(outputDir, 'index', pageFileName);
 
-      return {
-        currentPage: pageIndex + 1,
-        totalPages: totalPages,
-        nextPage: pageIndex + 2 <= totalPages ? `index/${pageIndex + 2}.json` : null,
-        previousPage: pageIndex > 0 ? `index/${pageIndex}.json` : null,
-        posts: pagePosts.map(post => ({
-          id: post.id,
-          title: post.title,
-          link: `posts/${post.id}.json`
-        }))
-      };
-    });
+  // Create the metadata object for the current page
+  const pageMetadata = {
+    currentPage: pageIndex + 1,
+    totalPages: totalPages,
+    nextPage: pageIndex + 2 <= totalPages ? `index/${pageIndex + 2}.json` : null,
+    previousPage: pageIndex > 0 ? `index/${pageIndex}.json` : null,
+    posts: pagePosts.map(post => ({
+      id: post.id,
+      title: post.title,
+      link: `posts/${post.id}.json`
+    }))
+  };
 
-    // Save pagination.json
-    const paginationPath = path.join(outputDir, 'pagination.json');
-    fs.writeFileSync(paginationPath, JSON.stringify(paginationData, null, 2));
+  // Write the metadata for this page to its corresponding file
+  fs.writeFileSync(indexPath, JSON.stringify(pageMetadata, null, 2));
+});
 
-    console.log('JSON generation complete!');
+console.log('JSON generation complete!');
   } catch (error) {
     console.error('Error:', error.message);
     process.exit(1); // Exit with an error code
