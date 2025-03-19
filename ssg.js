@@ -107,9 +107,6 @@ async function main() {
       };
     });
 
-    // Save pagination.json
-    const paginationPath = path.join(outputDir, 'pagination.json');
-    fs.writeFileSync(paginationPath, JSON.stringify(paginationData, null, 2));
 
     console.log('JSON generation complete!');
   } catch (error) {
