@@ -7,8 +7,52 @@ const dataUrl = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/
 
 // Output directory
 const outputDir = './public';
+
+// Ensure the output directory and subdirectories exist
+if (!fs.existsSync(outputDir)) {
+  fs.mkdirSync(outputDir, { recursive: true });
+}
+if (!fs.existsSync(path.join(outputDir, 'posts'))) {
+  fs.mkdirSync(path.join(outputDir, 'posts'), { recursive: true });
+}
 if (!fs.existsSync(path.join(outputDir, 'index'))) {
   fs.mkdirSync(path.join(outputDir, 'index'), { recursive: true });
+}
+
+// Function to fetch JSON data from the remote URL
+function fetchData(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      if (res.statusCode !== 200) {
+        reject(new Error(`Failed to fetch data. Status code: ${res.statusCode}`));
+        return;
+      }
+
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk; // Append each chunk of data
+      });
+
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data)); // Parse the fetched data as JSON
+        } catch (error) {
+          reject(new Error(`Error parsing JSON: ${error.message}`));
+        }
+      });
+    }).on('error', (error) => {
+      reject(new Error(`Error fetching data: ${error.message}`));
+    });
+  });
+}
+
+// Function to split posts into pages
+function paginatePosts(posts, pageSize) {
+  const paginated = [];
+  for (let i = 0; i < posts.length; i += pageSize) {
+    paginated.push(posts.slice(i, i + pageSize));
+  }
+  return paginated;
 }
 
 // Main function to process the JSON data
@@ -41,7 +85,7 @@ async function main() {
       fs.writeFileSync(postFilePath, JSON.stringify(post, null, 2));
     });
 
-    // Generate paginated index files
+    // Generate paginated index files and pagination metadata
     const totalPages = paginatedPosts.length;
     const paginationData = paginatedPosts.map((pagePosts, pageIndex) => {
       const pageFileName = `${pageIndex + 1}.json`;
@@ -73,3 +117,6 @@ async function main() {
     process.exit(1); // Exit with an error code
   }
 }
+
+// Run the main function
+main();
