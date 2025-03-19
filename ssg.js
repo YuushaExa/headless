@@ -101,6 +101,7 @@ async function main() {
         previousPage: pageIndex > 0 ? `index/${pageIndex}.json` : null,
         posts: pagePosts.map(post => ({
           id: post.id,
+          totalPages: totalPages,
           title: post.title,
           link: `posts/${post.id}.json`
         }))
