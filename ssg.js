@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const https = require('https'); // For fetching remote JSON
+const https = require('https');
 
 // Remote JSON URL
 const dataUrl = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json';
@@ -8,18 +8,9 @@ const dataUrl = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/
 // Output directory
 const outputDir = './public';
 
-// Ensure the output directory and subdirectories exist
+// Ensure the output directory exists
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
-}
-if (!fs.existsSync(path.join(outputDir, 'posts'))) {
-  fs.mkdirSync(path.join(outputDir, 'posts'), { recursive: true });
-}
-if (!fs.existsSync(path.join(outputDir, 'index'))) {
-  fs.mkdirSync(path.join(outputDir, 'index'), { recursive: true });
-}
-if (!fs.existsSync(path.join(outputDir, 'developers'))) {
-  fs.mkdirSync(path.join(outputDir, 'developers'), { recursive: true });
 }
 
 // Function to fetch JSON data from the remote URL
@@ -49,13 +40,43 @@ function fetchData(url) {
   });
 }
 
-// Function to split posts into pages
-function paginatePosts(posts, pageSize) {
+// Function to split items into pages
+function paginateItems(items, pageSize) {
   const paginated = [];
-  for (let i = 0; i < posts.length; i += pageSize) {
-    paginated.push(posts.slice(i, i + pageSize));
+  for (let i = 0; i < items.length; i += pageSize) {
+    paginated.push(items.slice(i, i + pageSize));
   }
   return paginated;
+}
+
+// Generic function to generate paginated index files and individual pages
+async function generatePaginatedFiles(config) {
+  const { type, items, pageSize, basePath, itemMetadataMapper, pageMetadataMapper } = config;
+
+  // Ensure the base directory exists
+  const baseDir = path.join(outputDir, basePath);
+  if (!fs.existsSync(baseDir)) {
+    fs.mkdirSync(baseDir, { recursive: true });
+  }
+
+  // Generate individual item files
+  items.forEach(item => {
+    const itemFilePath = path.join(baseDir, `${item.id}.json`);
+    const itemMetadata = itemMetadataMapper(item);
+    fs.writeFileSync(itemFilePath, JSON.stringify(itemMetadata, null, 2));
+  });
+
+  // Paginate the items
+  const paginatedItems = paginateItems(items, pageSize);
+
+  // Generate paginated index files
+  paginatedItems.forEach((pageItems, pageIndex) => {
+    const pageFileName = `${pageIndex + 1}.json`;
+    const indexPath = path.join(baseDir, pageFileName);
+
+    const pageMetadata = pageMetadataMapper(pageItems, pageIndex + 1, paginatedItems.length);
+    fs.writeFileSync(indexPath, JSON.stringify(pageMetadata, null, 2));
+  });
 }
 
 // Main function to process the JSON data
@@ -77,55 +98,40 @@ async function main() {
     }
 
     // Pagination settings
-    const postsPerPage = 10; // Number of posts per page
+    const postsPerPage = 10;
 
-    // Generate individual post files
-    posts.forEach(post => {
-      const postFilePath = path.join(outputDir, 'posts', `${post.id}.json`);
-
-      // Create the updated metadata object for the post
-      const postMetadata = {
+    // Configuration for posts
+    const postsConfig = {
+      type: 'posts',
+      items: posts,
+      pageSize: postsPerPage,
+      basePath: 'posts',
+      itemMetadataMapper: (post) => ({
         id: post.id,
         title: post.title,
-        developers: post.developers || [], // Default to an empty array if not provided
-        aliases: post.aliases || [],      // Default to an empty array if not provided
-        description: post.description || null, // Default to null if not provided
-        image: post.image || null         // Default to null if not provided
-      };
-
-      // Write the post metadata to its corresponding file
-      fs.writeFileSync(postFilePath, JSON.stringify(postMetadata, null, 2));
-    });
-
-    // Paginate the posts
-    const paginatedPosts = paginatePosts(posts, postsPerPage);
-
-    // Generate paginated index files and pagination metadata
-    const totalPages = paginatedPosts.length;
-
-    paginatedPosts.forEach((pagePosts, pageIndex) => {
-      const pageFileName = `${pageIndex + 1}.json`;
-      const indexPath = path.join(outputDir, 'index', pageFileName);
-
-      // Create the metadata object for the current page
-      const pageMetadata = {
-        currentPage: pageIndex + 1,
-        totalPages: totalPages,
-        nextPage: pageIndex + 2 <= totalPages ? `index/${pageIndex + 2}.json` : null,
-        previousPage: pageIndex > 0 ? `index/${pageIndex}.json` : null,
+        developers: post.developers || [],
+        aliases: post.aliases || [],
+        description: post.description || null,
+        image: post.image || null
+      }),
+      pageMetadataMapper: (pagePosts, currentPage, totalPages) => ({
+        currentPage,
+        totalPages,
+        nextPage: currentPage + 1 <= totalPages ? `index/${currentPage + 1}.json` : null,
+        previousPage: currentPage > 1 ? `index/${currentPage - 1}.json` : null,
         posts: pagePosts.map(post => ({
           id: post.id,
           title: post.title,
           image: post.image || null,
           link: `posts/${post.id}.json`
         }))
-      };
+      })
+    };
 
-      // Write the metadata for this page to its corresponding file
-      fs.writeFileSync(indexPath, JSON.stringify(pageMetadata, null, 2));
-    });
+    // Generate paginated files for posts
+    await generatePaginatedFiles(postsConfig);
 
-    // Step 1: Extract developers and map their posts
+    // Extract developers and map their posts
     const developersMap = {};
     posts.forEach(post => {
       if (Array.isArray(post.developers)) {
@@ -148,63 +154,28 @@ async function main() {
       }
     });
 
-    // Step 2: Generate developer-specific pages
-    const developerIds = Object.keys(developersMap);
-    developerIds.forEach(devId => {
-      const developer = developersMap[devId];
-      const developerDir = path.join(outputDir, 'developers', devId);
-
-      if (!fs.existsSync(developerDir)) {
-        fs.mkdirSync(developerDir, { recursive: true });
-      }
-
-      // Paginate the developer's posts
-      const paginatedDeveloperPosts = paginatePosts(developer.posts, postsPerPage);
-
-      // Generate paginated files for the developer
-      paginatedDeveloperPosts.forEach((pagePosts, pageIndex) => {
-        const pageFileName = `${pageIndex + 1}.json`;
-        const developerIndexPath = path.join(developerDir, pageFileName);
-
-        const pageMetadata = {
-          developer: {
-            name: developer.name,
-            id: developer.id
-          },
-          currentPage: pageIndex + 1,
-          totalPages: paginatedDeveloperPosts.length,
-          nextPage: pageIndex + 2 <= paginatedDeveloperPosts.length ? `${devId}/${pageIndex + 2}.json` : null,
-          previousPage: pageIndex > 0 ? `${devId}/${pageIndex}.json` : null,
-          posts: pagePosts
-        };
-
-        fs.writeFileSync(developerIndexPath, JSON.stringify(pageMetadata, null, 2));
-      });
-    });
-
-    // Step 3: Generate an index of all developers with pagination
-    const developersList = developerIds.map(devId => ({
-      name: developersMap[devId].name,
-      id: developersMap[devId].id,
-      link: `developers/${devId}/1.json`
-    }));
-
-    const paginatedDevelopers = paginatePosts(developersList, postsPerPage);
-
-    paginatedDevelopers.forEach((pageDevelopers, pageIndex) => {
-      const pageFileName = `${pageIndex + 1}.json`;
-      const developersIndexPath = path.join(outputDir, 'developers', pageFileName);
-
-      const pageMetadata = {
-        currentPage: pageIndex + 1,
-        totalPages: paginatedDevelopers.length,
-        nextPage: pageIndex + 2 <= paginatedDevelopers.length ? `developers/${pageIndex + 2}.json` : null,
-        previousPage: pageIndex > 0 ? `developers/${pageIndex}.json` : null,
+    // Configuration for developers
+    const developersConfig = {
+      type: 'developers',
+      items: Object.values(developersMap),
+      pageSize: postsPerPage,
+      basePath: 'developers',
+      itemMetadataMapper: (developer) => ({
+        name: developer.name,
+        id: developer.id,
+        posts: developer.posts
+      }),
+      pageMetadataMapper: (pageDevelopers, currentPage, totalPages) => ({
+        currentPage,
+        totalPages,
+        nextPage: currentPage + 1 <= totalPages ? `developers/${currentPage + 1}.json` : null,
+        previousPage: currentPage > 1 ? `developers/${currentPage - 1}.json` : null,
         developers: pageDevelopers
-      };
+      })
+    };
 
-      fs.writeFileSync(developersIndexPath, JSON.stringify(pageMetadata, null, 2));
-    });
+    // Generate paginated files for developers
+    await generatePaginatedFiles(developersConfig);
 
     console.log('JSON generation complete!');
   } catch (error) {
