@@ -1,20 +1,23 @@
-const fs = require('fs');
+const fs = require('fs').promises; // Use promises for async file operations
 const path = require('path');
 const https = require('https');
 
-// Remote JSON URL
-const dataUrl = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json';
+// Constants
+const DATA_URL = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json';
+const OUTPUT_DIR = './public';
+const POSTS_PER_PAGE = 10;
 
-// Output directory
-const outputDir = './public';
-
-// Ensure the output directory exists
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true });
+// Ensure directory exists
+async function ensureDirectoryExists(dir) {
+  try {
+    await fs.access(dir);
+  } catch {
+    await fs.mkdir(dir, { recursive: true });
+  }
 }
 
-// Function to fetch JSON data from the remote URL
-function fetchData(url) {
+// Fetch JSON data from a URL using native https
+async function fetchData(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
       if (res.statusCode !== 200) {
@@ -23,13 +26,10 @@ function fetchData(url) {
       }
 
       let data = '';
-      res.on('data', (chunk) => {
-        data += chunk; // Append each chunk of data
-      });
-
+      res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
         try {
-          resolve(JSON.parse(data)); // Parse the fetched data as JSON
+          resolve(JSON.parse(data));
         } catch (error) {
           reject(new Error(`Error parsing JSON: ${error.message}`));
         }
@@ -40,154 +40,144 @@ function fetchData(url) {
   });
 }
 
-// Function to split items into pages
+// Paginate items into chunks
 function paginateItems(items, pageSize) {
-  const paginated = [];
-  for (let i = 0; i < items.length; i += pageSize) {
-    paginated.push(items.slice(i, i + pageSize));
-  }
-  return paginated;
+  return Array.from({ length: Math.ceil(items.length / pageSize) }, (_, i) =>
+    items.slice(i * pageSize, (i + 1) * pageSize)
+  );
 }
 
-// Generic function to generate paginated index files and individual pages
-async function generatePaginatedFiles(config) {
-  const { type, items, pageSize, basePath, itemMetadataMapper, pageMetadataMapper } = config;
+// Generate individual item files
+async function generateItemFiles(items, baseDir, itemMapper) {
+  await Promise.all(
+    items.map(async (item) => {
+      const filePath = path.join(baseDir, `${item.id}.json`);
+      const itemData = itemMapper(item);
+      await fs.writeFile(filePath, JSON.stringify(itemData, null, 2));
+    })
+  );
+}
 
-  // Ensure the base directory exists
-  const baseDir = path.join(outputDir, basePath);
-  if (!fs.existsSync(baseDir)) {
-    fs.mkdirSync(baseDir, { recursive: true });
-  }
+// Generate paginated index files
+async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
+  await Promise.all(
+    paginatedItems.map(async (page, index) => {
+      const pageNumber = index + 1;
+      const filePath = path.join(baseDir, `${pageNumber}.json`);
+      const pageData = pageMapper(page, pageNumber, paginatedItems.length);
+      await fs.writeFile(filePath, JSON.stringify(pageData, null, 2));
+    })
+  );
+}
+
+// Generate paginated files for a given type
+async function generatePaginatedFiles(config) {
+  const { items, pageSize, basePath, itemMapper, pageMapper } = config;
+  const baseDir = path.join(OUTPUT_DIR, basePath);
+
+  await ensureDirectoryExists(baseDir);
 
   // Generate individual item files
-  items.forEach(item => {
-    const itemFilePath = path.join(baseDir, `${item.id}.json`);
-    const itemMetadata = itemMetadataMapper(item);
-    fs.writeFileSync(itemFilePath, JSON.stringify(itemMetadata, null, 2));
-  });
+  await generateItemFiles(items, baseDir, itemMapper);
 
-  // Paginate the items
+  // Paginate items and generate index files
   const paginatedItems = paginateItems(items, pageSize);
-
-  // Generate paginated index files
-  paginatedItems.forEach((pageItems, pageIndex) => {
-    const pageFileName = `${pageIndex + 1}.json`;
-    const indexPath = path.join(baseDir, pageFileName);
-
-    const pageMetadata = pageMetadataMapper(pageItems, pageIndex + 1, paginatedItems.length);
-    fs.writeFileSync(indexPath, JSON.stringify(pageMetadata, null, 2));
-  });
+  await generatePaginatedIndex(paginatedItems, baseDir, pageMapper);
 }
 
-// Main function to process the JSON data
+// Extract developers from posts
+function extractDevelopers(posts) {
+  const developersMap = new Map();
+
+  posts.forEach((post) => {
+    post.developers?.forEach((developer) => {
+      if (!developersMap.has(developer.id)) {
+        developersMap.set(developer.id, {
+          ...developer,
+          posts: [],
+        });
+      }
+      developersMap.get(developer.id).posts.push({
+        id: post.id,
+        title: post.title,
+        image: post.image || null,
+        link: `posts/${post.id}.json`,
+      });
+    });
+  });
+
+  return Array.from(developersMap.values());
+}
+
+// Main function
 async function main() {
   try {
-    // Fetch the JSON data
-    const data = await fetchData(dataUrl);
-
-    // Validate the input JSON
-    if (!Array.isArray(data)) {
-      throw new Error("The fetched data is not an array.");
-    }
-
-    const posts = data;
-
-    if (posts.length === 0) {
-      console.warn('Warning: The "posts" array is empty. No files will be generated.');
+    // Fetch and validate data
+    const data = await fetchData(DATA_URL);
+    if (!Array.isArray(data)) throw new Error('Fetched data is not an array.');
+    if (data.length === 0) {
+      console.warn('Warning: No data found. Exiting.');
       return;
     }
 
-    // Pagination settings
-    const postsPerPage = 10;
-
-    // Configuration for posts
-    const postsConfig = {
-      type: 'posts',
-      items: posts,
-      pageSize: postsPerPage,
+    // Generate paginated files for posts
+    await generatePaginatedFiles({
+      items: data,
+      pageSize: POSTS_PER_PAGE,
       basePath: 'posts',
-      itemMetadataMapper: (post) => ({
+      itemMapper: (post) => ({
         id: post.id,
         title: post.title,
         developers: post.developers || [],
         aliases: post.aliases || [],
         description: post.description || null,
-        image: post.image || null
+        image: post.image || null,
       }),
-      pageMetadataMapper: (pagePosts, currentPage, totalPages) => ({
+      pageMapper: (pagePosts, currentPage, totalPages) => ({
         currentPage,
         totalPages,
-        nextPage: currentPage + 1 <= totalPages ? `index/${currentPage + 1}.json` : null,
-        previousPage: currentPage > 1 ? `index/${currentPage - 1}.json` : null,
-        posts: pagePosts.map(post => ({
+        nextPage: currentPage < totalPages ? `${currentPage + 1}.json` : null,
+        previousPage: currentPage > 1 ? `${currentPage - 1}.json` : null,
+        posts: pagePosts.map((post) => ({
           id: post.id,
           title: post.title,
           image: post.image || null,
-          link: `posts/${post.id}.json`
-        }))
-      })
-    };
-
-    // Generate paginated files for posts
-    await generatePaginatedFiles(postsConfig);
-
-    // Extract developers and map their posts
-    const developersMap = {};
-    posts.forEach(post => {
-      if (Array.isArray(post.developers)) {
-        post.developers.forEach(developer => {
-          const devId = developer.id;
-          if (!developersMap[devId]) {
-            developersMap[devId] = {
-              name: developer.name,
-              id: developer.id,
-              posts: []
-            };
-          }
-          developersMap[devId].posts.push({
-            id: post.id,
-            title: post.title,
-            image: post.image || null,
-            link: `posts/${post.id}.json`
-          });
-        });
-      }
+          link: `posts/${post.id}.json`,
+        })),
+      }),
     });
 
-// Configuration for developers
-const developersConfig = {
-  type: 'developers',
-  items: Object.values(developersMap),
-  pageSize: postsPerPage,
-  basePath: 'developers',
-  itemMetadataMapper: (developer) => ({
-    name: developer.name,
-    id: developer.id,
-    posts: developer.posts,
-    link: `developers/${developer.id}.json` 
-  }),
-  pageMetadataMapper: (pageDevelopers, currentPage, totalPages) => ({
-    currentPage,
-    totalPages,
-    nextPage: currentPage + 1 <= totalPages ? `developers/${currentPage + 1}.json` : null,
-    previousPage: currentPage > 1 ? `developers/${currentPage - 1}.json` : null,
-    developers: pageDevelopers.map(dev => ({
-      name: dev.name,
-      id: dev.id,
-      link: `developers/${dev.id}.json`
-    }))
-  })
-};
-
     // Generate paginated files for developers
-    await generatePaginatedFiles(developersConfig);
+    const developers = extractDevelopers(data);
+    await generatePaginatedFiles({
+      items: developers,
+      pageSize: POSTS_PER_PAGE,
+      basePath: 'developers',
+      itemMapper: (developer) => ({
+        name: developer.name,
+        id: developer.id,
+        posts: developer.posts,
+        link: `developers/${developer.id}.json`,
+      }),
+      pageMapper: (pageDevelopers, currentPage, totalPages) => ({
+        currentPage,
+        totalPages,
+        nextPage: currentPage < totalPages ? `${currentPage + 1}.json` : null,
+        previousPage: currentPage > 1 ? `${currentPage - 1}.json` : null,
+        developers: pageDevelopers.map((dev) => ({
+          name: dev.name,
+          id: dev.id,
+          link: `developers/${dev.id}.json`,
+        })),
+      }),
+    });
 
     console.log('JSON generation complete!');
   } catch (error) {
     console.error('Error:', error.message);
-    process.exit(1); // Exit with an error code
+    process.exit(1);
   }
 }
 
-// Run the main function
+// Run the script
 main();
