@@ -8,9 +8,12 @@ const dataUrl = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/
 // Output directory
 const outputDir = './public';
 
-// Ensure the output directory exists
+// Ensure the output directory and posts subdirectory exist
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
+}
+if (!fs.existsSync(path.join(outputDir, 'posts'))) {
+  fs.mkdirSync(path.join(outputDir, 'posts'), { recursive: true });
 }
 
 // Function to fetch JSON data from the remote URL
