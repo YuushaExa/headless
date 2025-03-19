@@ -1,4 +1,12 @@
-// Ensure the output directory and subdirectories exist
+const fs = require('fs');
+const path = require('path');
+const https = require('https'); // For fetching remote JSON
+
+// Remote JSON URL
+const dataUrl = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json';
+
+// Output directory
+const outputDir = './public';
 if (!fs.existsSync(path.join(outputDir, 'index'))) {
   fs.mkdirSync(path.join(outputDir, 'index'), { recursive: true });
 }
