@@ -89,7 +89,7 @@ async function main() {
     const totalPages = paginatedPosts.length;
     const paginationData = paginatedPosts.map((pagePosts, pageIndex) => {
       const pageFileName = `${pageIndex + 1}.json`;
-      const indexPath = path.join(outputDir, 'index', pageFileName);
+      const indexPath = path.join(outputDir, 'page', pageFileName);
 
       // Write the paginated posts for this index page to a file
       fs.writeFileSync(indexPath, JSON.stringify(pagePosts, null, 2));
