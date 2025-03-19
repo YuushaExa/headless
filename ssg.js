@@ -97,8 +97,8 @@ async function main() {
       return {
         currentPage: pageIndex + 1,
         totalPages: totalPages,
-        nextPage: pageIndex + 2 <= totalPages ? `index/${pageIndex + 2}.json` : null,
-        previousPage: pageIndex > 0 ? `index/${pageIndex}.json` : null,
+        nextPage: pageIndex + 2 <= totalPages ? `page/${pageIndex + 2}.json` : null,
+        previousPage: pageIndex > 0 ? `page/${pageIndex}.json` : null,
         posts: pagePosts.map(post => ({
           id: post.id,
           title: post.title,
@@ -107,6 +107,9 @@ async function main() {
       };
     });
 
+      // Save pagination.json
+    const paginationPath = path.join(outputDir, 'pagination.json');
+    fs.writeFileSync(paginationPath, JSON.stringify(paginationData, null, 2));
 
     console.log('JSON generation complete!');
   } catch (error) {
