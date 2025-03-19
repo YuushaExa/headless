@@ -80,10 +80,23 @@ async function main() {
     const paginatedPosts = paginatePosts(posts, postsPerPage);
 
     // Generate individual post files
-    posts.forEach(post => {
-      const postFilePath = path.join(outputDir, 'posts', `${post.id}.json`);
-      fs.writeFileSync(postFilePath, JSON.stringify(post, null, 2));
-    });
+// Generate individual post files
+posts.forEach(post => {
+  const postFilePath = path.join(outputDir, 'posts', `${post.id}.json`);
+
+  // Create the updated metadata object for the post
+  const postMetadata = {
+    id: post.id,
+    title: post.title,
+    developers: post.developers || [], // Default to an empty array if not provided
+    aliases: post.aliases || [],      // Default to an empty array if not provided
+    description: post.description || null, // Default to null if not provided
+    image: post.image || null         // Default to null if not provided
+  };
+
+  // Write the post metadata to its corresponding file
+  fs.writeFileSync(postFilePath, JSON.stringify(postMetadata, null, 2));
+});
 
 // Generate paginated index files and pagination metadata
 const totalPages = paginatedPosts.length;
@@ -101,6 +114,7 @@ paginatedPosts.forEach((pagePosts, pageIndex) => {
     posts: pagePosts.map(post => ({
       id: post.id,
       title: post.title,
+      image: post.image || null,
       link: `posts/${post.id}.json`
     }))
   };
