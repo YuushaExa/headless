@@ -154,27 +154,30 @@ async function main() {
       }
     });
 
-    // Configuration for developers
-    const developersConfig = {
-      type: 'developers',
-      items: Object.values(developersMap),
-      pageSize: postsPerPage,
-      basePath: 'developers',
-      itemMetadataMapper: (developer) => ({
-        name: developer.name,
-        id: developer.id,
-        posts: developer.posts,
-        link: `developers/${developer.id}/1.json`
-      }),
-      pageMetadataMapper: (pageDevelopers, currentPage, totalPages) => ({
-        currentPage,
-        totalPages,
-        nextPage: currentPage + 1 <= totalPages ? `developers/${currentPage + 1}.json` : null,
-        previousPage: currentPage > 1 ? `developers/${currentPage - 1}.json` : null,
-        developers: pageDevelopers,
-        link: `developers/${developer.id}/1.json`
-      })
-    };
+// Configuration for developers
+const developersConfig = {
+  type: 'developers',
+  items: Object.values(developersMap),
+  pageSize: postsPerPage,
+  basePath: 'developers',
+  itemMetadataMapper: (developer) => ({
+    name: developer.name,
+    id: developer.id,
+    posts: developer.posts,
+    link: `developers/${developer.id}/1.json` // Add link to the first page of the developer's posts
+  }),
+  pageMetadataMapper: (pageDevelopers, currentPage, totalPages) => ({
+    currentPage,
+    totalPages,
+    nextPage: currentPage + 1 <= totalPages ? `developers/${currentPage + 1}.json` : null,
+    previousPage: currentPage > 1 ? `developers/${currentPage - 1}.json` : null,
+    developers: pageDevelopers.map(dev => ({
+      name: dev.name,
+      id: dev.id,
+      link: `developers/${dev.id}/1.json` // Add link to the first page of the developer's posts
+    }))
+  })
+};
 
     // Generate paginated files for developers
     await generatePaginatedFiles(developersConfig);
