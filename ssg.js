@@ -101,13 +101,13 @@ async function main() {
         previousPage: pageIndex > 0 ? `index/${pageIndex}.json` : null,
         posts: pagePosts.map(post => ({
           id: post.id,
-
+          title: post.title,
           link: `posts/${post.id}.json`
         }))
       };
     });
 
-      // Save pagination.json
+    // Save pagination.json
     const paginationPath = path.join(outputDir, 'pagination.json');
     fs.writeFileSync(paginationPath, JSON.stringify(paginationData, null, 2));
 
