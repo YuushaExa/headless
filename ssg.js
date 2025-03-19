@@ -164,7 +164,7 @@ const developersConfig = {
     name: developer.name,
     id: developer.id,
     posts: developer.posts,
-    link: `developers/${developer.id}/1.json` // Add link to the first page of the developer's posts
+    link: `developers/${developer.id}.json` 
   }),
   pageMetadataMapper: (pageDevelopers, currentPage, totalPages) => ({
     currentPage,
@@ -174,7 +174,7 @@ const developersConfig = {
     developers: pageDevelopers.map(dev => ({
       name: dev.name,
       id: dev.id,
-      link: `developers/${dev.id}/1.json` // Add link to the first page of the developer's posts
+      link: `developers/${dev.id}.json`
     }))
   })
 };
