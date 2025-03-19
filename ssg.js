@@ -163,7 +163,8 @@ async function main() {
       itemMetadataMapper: (developer) => ({
         name: developer.name,
         id: developer.id,
-        posts: developer.posts
+        posts: developer.posts,
+        link: `developers/${developer.id}/1.json`
       }),
       pageMetadataMapper: (pageDevelopers, currentPage, totalPages) => ({
         currentPage,
