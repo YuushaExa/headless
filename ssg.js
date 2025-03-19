@@ -46,11 +46,23 @@ async function main() {
     // Fetch the JSON data
     const data = await fetchData(dataUrl);
 
+    // Validate the 'posts' array
+    if (!Array.isArray(data.posts)) {
+      throw new Error("The 'posts' field is missing or not an array in the fetched JSON.");
+    }
+
+    const posts = data.posts;
+
+    if (posts.length === 0) {
+      console.warn('Warning: The "posts" array is empty. No files will be generated.');
+      return;
+    }
+
     // Initialize an array to store metadata for the index file
     const indexData = [];
 
     // Process each post
-    data.posts.forEach((post) => {
+    posts.forEach((post) => {
       // Add metadata to the index file
       indexData.push({
         id: post.id,
@@ -66,13 +78,6 @@ async function main() {
     // Save the index JSON file
     const indexPath = path.join(outputDir, 'index.json');
     fs.writeFileSync(indexPath, JSON.stringify(indexData, null, 2));
-
-    // Save the pagination JSON file
-    const paginationPath = path.join(outputDir, 'pagination.json');
-    fs.writeFileSync(
-      paginationPath,
-      JSON.stringify(data.pagination, null, 2)
-    );
 
     console.log('JSON generation complete!');
   } catch (error) {
