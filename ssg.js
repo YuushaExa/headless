@@ -8,10 +8,10 @@ const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 
 // Track total number of generated files
-let totalFilesGenerated = 0; 
+let totalFilesGenerated = 0;
 
-// Ensure directory exists (optimize by checking once)
-async function ensureDirectoryExistsOnce(dir) {
+// Ensure directory exists
+async function ensureDirectoryExists(dir) {
   try {
     await fs.access(dir);
   } catch {
@@ -43,19 +43,11 @@ async function fetchData(url) {
   });
 }
 
-// Paginate items into chunks using a generator
-function* paginateItemsGenerator(items, pageSize) {
-  for (let i = 0; i < items.length; i += pageSize) {
-    yield items.slice(i, i + pageSize);
-  }
-}
-
-// Batch file writes to reduce I/O overhead
-async function batchWriteFiles(filePromises, batchSize = 50) {
-  for (let i = 0; i < filePromises.length; i += batchSize) {
-    const batch = filePromises.slice(i, i + batchSize);
-    await Promise.all(batch); // Process a batch of file writes
-  }
+// Paginate items into chunks
+function paginateItems(items, pageSize) {
+  return Array.from({ length: Math.ceil(items.length / pageSize) }, (_, i) =>
+    items.slice(i * pageSize, (i + 1) * pageSize)
+  );
 }
 
 // Generate individual item files
@@ -74,32 +66,32 @@ async function generateItemFiles(items, baseDir, itemMapper) {
     }
   });
 
-  await batchWriteFiles(writePromises); // Write files in batches
+  await Promise.all(writePromises); // Write all files in parallel
 }
 
 // Generate paginated index files
 async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
-  await ensureDirectoryExistsOnce(path.join(baseDir, 'page')); // Ensure 'page' directory exists
+  await ensureDirectoryExists(path.join(baseDir, 'page')); // Ensure 'page' directory exists
 
-  const writePromises = paginatedItems.map(async (page, index) => {
-    const pageNumber = index + 1;
-    const filePath =
-      pageNumber === 1
-        ? path.join(baseDir, 'index.json') // First page is vn.json
-        : path.join(baseDir, 'page', `${pageNumber}.json`); // Subsequent pages are in /page/
-    const pageData = pageMapper(page, pageNumber, paginatedItems.length);
-    await fs.writeFile(filePath, JSON.stringify(pageData, null, 2));
+  await Promise.all(
+    paginatedItems.map(async (page, index) => {
+      const pageNumber = index + 1;
+      const filePath =
+        pageNumber === 1
+          ? path.join(baseDir, 'index.json') // First page is vn.json
+          : path.join(baseDir, 'page', `${pageNumber}.json`); // Subsequent pages are in /page/
+      const pageData = pageMapper(page, pageNumber, paginatedItems.length);
+      await fs.writeFile(filePath, JSON.stringify(pageData, null, 2));
 
-    // Increment the total file count
-    totalFilesGenerated++;
+      // Increment the total file count
+      totalFilesGenerated++;
 
-    // Log the first 3 generated paginated files
-    if (index < 3) {
-      console.log(`Generated paginated file: ${filePath}`);
-    }
-  });
-
-  await batchWriteFiles(writePromises); // Write files in batches
+      // Log the first 3 generated paginated files
+      if (index < 3) {
+        console.log(`Generated paginated file: ${filePath}`);
+      }
+    })
+  );
 }
 
 // Generate paginated files for a given type
@@ -107,13 +99,13 @@ async function generatePaginatedFiles(config) {
   const { items, pageSize, basePath, itemMapper, pageMapper } = config;
   const baseDir = path.join(OUTPUT_DIR, basePath);
 
-  await ensureDirectoryExistsOnce(baseDir);
+  await ensureDirectoryExists(baseDir);
 
   // Generate individual item files
   await generateItemFiles(items, baseDir, itemMapper);
 
   // Paginate items and generate index files
-  const paginatedItems = [...paginateItemsGenerator(items, pageSize)];
+  const paginatedItems = paginateItems(items, pageSize);
   await generatePaginatedIndex(paginatedItems, baseDir, pageMapper);
 }
 
@@ -154,9 +146,6 @@ async function main() {
       console.warn('Warning: No data found. Exiting.');
       return;
     }
-
-    // Ensure output directory exists once
-    await ensureDirectoryExistsOnce(OUTPUT_DIR);
 
     // Generate paginated files for posts
     await generatePaginatedFiles({
