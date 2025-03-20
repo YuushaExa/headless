@@ -72,7 +72,7 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
       const pageNumber = index + 1;
       const filePath =
         pageNumber === 1
-          ? path.join(baseDir, 'vn.json') // First page is vn.json
+          ? path.join(baseDir, 'index.json') // First page is vn.json
           : path.join(baseDir, 'page', `${pageNumber}.json`); // Subsequent pages are in /page/
       const pageData = pageMapper(page, pageNumber, paginatedItems.length);
       await fs.writeFile(filePath, JSON.stringify(pageData, null, 2));
@@ -167,7 +167,7 @@ async function main() {
           previousPage:
             currentPage > 1
               ? currentPage === 2
-                ? 'vn.json' // Second page points back to vn.json
+                ? 'index.json' // Second page points back to vn.json
                 : `vn/page/${currentPage - 1}.json` // Subsequent pages point to previous page
               : null,
         },
