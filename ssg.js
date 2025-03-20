@@ -52,21 +52,21 @@ function paginateItems(items, pageSize) {
 
 // Generate individual item files
 async function generateItemFiles(items, baseDir, itemMapper) {
-  await Promise.all(
-    items.map(async (item, index) => {
-      const filePath = path.join(baseDir, `${item.id}.json`);
-      const itemData = itemMapper(item);
-      await fs.writeFile(filePath, JSON.stringify(itemData, null, 2));
+  const writePromises = items.map(async (item, index) => {
+    const filePath = path.join(baseDir, `${item.id}.json`);
+    const itemData = itemMapper(item);
+    await fs.writeFile(filePath, JSON.stringify(itemData, null, 2));
 
-      // Increment the total file count
-      totalFilesGenerated++;
+    // Increment the total file count
+    totalFilesGenerated++;
 
-      // Log the first 3 generated item files
-      if (index < 3) {
-        console.log(`Generated item file: ${filePath}`);
-      }
-    })
-  );
+    // Log the first 3 generated item files
+    if (index < 3) {
+      console.log(`Generated item file: ${filePath}`);
+    }
+  });
+
+  await Promise.all(writePromises); // Write all files in parallel
 }
 
 // Generate paginated index files
