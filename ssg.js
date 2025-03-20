@@ -7,6 +7,9 @@ const DATA_URL = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 
+// Track total number of generated files
+let totalFilesGenerated = 0;
+
 // Ensure directory exists
 async function ensureDirectoryExists(dir) {
   try {
@@ -55,6 +58,9 @@ async function generateItemFiles(items, baseDir, itemMapper) {
       const itemData = itemMapper(item);
       await fs.writeFile(filePath, JSON.stringify(itemData, null, 2));
 
+      // Increment the total file count
+      totalFilesGenerated++;
+
       // Log the first 3 generated item files
       if (index < 3) {
         console.log(`Generated item file: ${filePath}`);
@@ -76,6 +82,9 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
           : path.join(baseDir, 'page', `${pageNumber}.json`); // Subsequent pages are in /page/
       const pageData = pageMapper(page, pageNumber, paginatedItems.length);
       await fs.writeFile(filePath, JSON.stringify(pageData, null, 2));
+
+      // Increment the total file count
+      totalFilesGenerated++;
 
       // Log the first 3 generated paginated files
       if (index < 3) {
@@ -127,6 +136,9 @@ function extractDevelopers(posts) {
 // Main function
 async function main() {
   try {
+    // Start the timer
+    console.time('File generation time');
+
     // Fetch and validate data
     const data = await fetchData(DATA_URL);
     if (!Array.isArray(data)) throw new Error('Fetched data is not an array.');
@@ -211,7 +223,9 @@ async function main() {
       }),
     });
 
-    console.log('JSON generation complete!');
+    // Stop the timer and log the total time and files generated
+    console.timeEnd('File generation time');
+    console.log(`Generated ${totalFilesGenerated} files in total.`);
   } catch (error) {
     console.error('Error:', error.message);
     process.exit(1);
