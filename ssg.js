@@ -10,7 +10,7 @@ const POSTS_PER_PAGE = 10;
 // Track total number of generated files
 let totalFilesGenerated = 0;
 
-// Ensure directories exist
+// Ensure directory exists
 async function ensureDirectoryExists(dir) {
   try {
     await fs.access(dir);
@@ -18,6 +18,7 @@ async function ensureDirectoryExists(dir) {
     await fs.mkdir(dir, { recursive: true });
   }
 }
+
 // Fetch JSON data from a URL using native https
 async function fetchData(url) {
   return new Promise((resolve, reject) => {
@@ -49,52 +50,56 @@ function paginateItems(items, pageSize) {
   );
 }
 
-// Generate individual item files in parallel
+// Generate individual item files
 async function generateItemFiles(items, baseDir, itemMapper) {
-  const writePromises = items.map(async (item, index) => {
-    const filePath = path.join(baseDir, `${item.id}.json`);
-    const itemData = itemMapper(item);
-    await fs.writeFile(filePath, JSON.stringify(itemData)); // Remove pretty-printing
+  await Promise.all(
+    items.map(async (item, index) => {
+      const filePath = path.join(baseDir, `${item.id}.json`);
+      const itemData = itemMapper(item);
+      await fs.writeFile(filePath, JSON.stringify(itemData, null, 2));
 
-    // Increment the total file count
-    totalFilesGenerated++;
+      // Increment the total file count
+      totalFilesGenerated++;
 
-    // Log the first 3 generated item files
-    if (index < 3) {
-      console.log(`Generated item file: ${filePath}`);
-    }
-  });
-
-  await Promise.all(writePromises); // Write all files in parallel
+      // Log the first 3 generated item files
+      if (index < 3) {
+        console.log(`Generated item file: ${filePath}`);
+      }
+    })
+  );
 }
 
 // Generate paginated index files
 async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
-  const writePromises = paginatedItems.map(async (page, index) => {
-    const pageNumber = index + 1;
-    const filePath =
-      pageNumber === 1
-        ? path.join(baseDir, 'index.json') // First page is vn.json
-        : path.join(baseDir, 'page', `${pageNumber}.json`); // Subsequent pages are in /page/
-    const pageData = pageMapper(page, pageNumber, paginatedItems.length);
-    await fs.writeFile(filePath, JSON.stringify(pageData)); // Remove pretty-printing
+  await ensureDirectoryExists(path.join(baseDir, 'page')); // Ensure 'page' directory exists
 
-    // Increment the total file count
-    totalFilesGenerated++;
+  await Promise.all(
+    paginatedItems.map(async (page, index) => {
+      const pageNumber = index + 1;
+      const filePath =
+        pageNumber === 1
+          ? path.join(baseDir, 'index.json') // First page is vn.json
+          : path.join(baseDir, 'page', `${pageNumber}.json`); // Subsequent pages are in /page/
+      const pageData = pageMapper(page, pageNumber, paginatedItems.length);
+      await fs.writeFile(filePath, JSON.stringify(pageData, null, 2));
 
-    // Log the first 3 generated paginated files
-    if (index < 3) {
-      console.log(`Generated paginated file: ${filePath}`);
-    }
-  });
+      // Increment the total file count
+      totalFilesGenerated++;
 
-  await Promise.all(writePromises); // Write all files in parallel
+      // Log the first 3 generated paginated files
+      if (index < 3) {
+        console.log(`Generated paginated file: ${filePath}`);
+      }
+    })
+  );
 }
 
 // Generate paginated files for a given type
 async function generatePaginatedFiles(config) {
   const { items, pageSize, basePath, itemMapper, pageMapper } = config;
   const baseDir = path.join(OUTPUT_DIR, basePath);
+
+  await ensureDirectoryExists(baseDir);
 
   // Generate individual item files
   await generateItemFiles(items, baseDir, itemMapper);
