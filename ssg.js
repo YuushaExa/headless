@@ -60,10 +60,15 @@ async function generateItemFiles(items, baseDir, itemMapper) {
 
 // Generate paginated index files
 async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
+  await ensureDirectoryExists(path.join(baseDir, 'page')); // Ensure 'page' directory exists
+
   await Promise.all(
     paginatedItems.map(async (page, index) => {
       const pageNumber = index + 1;
-      const filePath = path.join(baseDir, `${pageNumber}.json`);
+      const filePath =
+        pageNumber === 1
+          ? path.join(baseDir, 'vn.json') // First page is vn.json
+          : path.join(baseDir, 'page', `${pageNumber}.json`); // Subsequent pages are in /page/
       const pageData = pageMapper(page, pageNumber, paginatedItems.length);
       await fs.writeFile(filePath, JSON.stringify(pageData, null, 2));
     })
@@ -124,7 +129,7 @@ async function main() {
     await generatePaginatedFiles({
       items: data,
       pageSize: POSTS_PER_PAGE,
-      basePath: 'posts',
+      basePath: 'vn', // Use 'vn' as the base path
       itemMapper: (post) => ({
         id: post.id,
         title: post.title,
@@ -134,16 +139,28 @@ async function main() {
         image: post.image || null,
       }),
       pageMapper: (pagePosts, currentPage, totalPages) => ({
-        currentPage,
-        totalPages,
-        nextPage: currentPage < totalPages ? `${currentPage + 1}.json` : null,
-        previousPage: currentPage > 1 ? `${currentPage - 1}.json` : null,
         posts: pagePosts.map((post) => ({
           id: post.id,
           title: post.title,
           image: post.image || null,
-          link: `posts/${post.id}.json`,
+          link: `vn/${post.id}.json`,
         })),
+        pagination: {
+          currentPage,
+          totalPages,
+          nextPage:
+            currentPage < totalPages
+              ? currentPage === 1
+                ? 'vn/page/2.json' // First page points to vn/page/2.json
+                : `vn/page/${currentPage + 1}.json` // Subsequent pages point to next page
+              : null,
+          previousPage:
+            currentPage > 1
+              ? currentPage === 2
+                ? 'vn.json' // Second page points back to vn.json
+                : `vn/page/${currentPage - 1}.json` // Subsequent pages point to previous page
+              : null,
+        },
       }),
     });
 
@@ -152,23 +169,35 @@ async function main() {
     await generatePaginatedFiles({
       items: developers,
       pageSize: POSTS_PER_PAGE,
-      basePath: 'developers',
+      basePath: 'vn/developers', // Use 'vn/developers' as the base path
       itemMapper: (developer) => ({
         name: developer.name,
         id: developer.id,
         posts: developer.posts,
-        link: `developers/${developer.id}.json`,
+        link: `vn/developers/${developer.id}.json`,
       }),
       pageMapper: (pageDevelopers, currentPage, totalPages) => ({
-        currentPage,
-        totalPages,
-        nextPage: currentPage < totalPages ? `${currentPage + 1}.json` : null,
-        previousPage: currentPage > 1 ? `${currentPage - 1}.json` : null,
         developers: pageDevelopers.map((dev) => ({
           name: dev.name,
           id: dev.id,
-          link: `developers/${dev.id}.json`,
+          link: `vn/developers/${dev.id}.json`,
         })),
+        pagination: {
+          currentPage,
+          totalPages,
+          nextPage:
+            currentPage < totalPages
+              ? currentPage === 1
+                ? 'vn/developers/page/2.json' // First page points to vn/developers/page/2.json
+                : `vn/developers/page/${currentPage + 1}.json` // Subsequent pages point to next page
+              : null,
+          previousPage:
+            currentPage > 1
+              ? currentPage === 2
+                ? 'vn/developers.json' // Second page points back to vn/developers.json
+                : `vn/developers/page/${currentPage - 1}.json` // Subsequent pages point to previous page
+              : null,
+        },
       }),
     });
 
