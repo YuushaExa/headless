@@ -12,7 +12,7 @@ let totalFilesGenerated = 0;
 
 // Ensure directories exist
 async function ensureDirectoriesExist(dirs) {
-  await Promise.all(dirs.map((dir) => fs.mkdir(dir, { recursive: true }).catch(() => {}));
+  await Promise.all(dirs.map((dir) => fs.mkdir(dir, { recursive: true }).catch(() => {})));
 }
 
 // Fetch JSON data from a URL using native https
