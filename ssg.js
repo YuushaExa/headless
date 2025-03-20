@@ -8,7 +8,7 @@ const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 
 // Track total number of generated files
-let totalFilesGenerated = 0;
+let totalFilesGenerated = 0; 
 
 // Ensure directory exists (optimize by checking once)
 async function ensureDirectoryExistsOnce(dir) {
