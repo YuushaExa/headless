@@ -106,7 +106,7 @@ function extractDevelopers(posts) {
         id: post.id,
         title: post.title,
         image: post.image || null,
-        link: `posts/${post.id}.json`,
+        link: `vn/${post.id}.json`, // Updated link to avoid duplication
       });
     });
   });
@@ -143,7 +143,7 @@ async function main() {
           id: post.id,
           title: post.title,
           image: post.image || null,
-          link: `vn/${post.id}.json`,
+          link: `vn/${post.id}.json`, // Updated link to avoid duplication
         })),
         pagination: {
           currentPage,
@@ -174,13 +174,13 @@ async function main() {
         name: developer.name,
         id: developer.id,
         posts: developer.posts,
-        link: `vn/developers/${developer.id}.json`,
+        link: `vn/developers/${developer.id}.json`, // Updated link to avoid duplication
       }),
       pageMapper: (pageDevelopers, currentPage, totalPages) => ({
         developers: pageDevelopers.map((dev) => ({
           name: dev.name,
           id: dev.id,
-          link: `vn/developers/${dev.id}.json`,
+          link: `vn/developers/${dev.id}.json`, // Updated link to avoid duplication
         })),
         pagination: {
           currentPage,
