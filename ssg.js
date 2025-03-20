@@ -7,6 +7,9 @@ const DATA_URL = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 
+// Track total number of generated files
+let totalFilesGenerated = 0;
+
 // Ensure directory exists
 async function ensureDirectoryExists(dir) {
   await fs.mkdir(dir, { recursive: true }).catch(() => {});
@@ -37,6 +40,7 @@ async function generateFiles(items, baseDir, fileMapper, filePrefix = '') {
   await Promise.all(items.map(async (item, index) => {
     const filePath = path.join(baseDir, `${filePrefix}${item.id}.json`);
     await fs.writeFile(filePath, JSON.stringify(fileMapper(item)));
+    totalFilesGenerated++; // Count each individual file
     if (index < 3) console.log(`Generated file: ${filePath}`);
   }));
 }
@@ -50,6 +54,7 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
       ? path.join(baseDir, 'index.json')
       : path.join(baseDir, 'page', `${pageNumber}.json`);
     await fs.writeFile(filePath, JSON.stringify(pageMapper(page, pageNumber, paginatedItems.length)));
+    totalFilesGenerated++; // Count each paginated file
     if (index < 3) console.log(`Generated paginated file: ${filePath}`);
   }));
 }
@@ -144,7 +149,7 @@ async function main() {
     await generatePaginatedIndex(paginateItems(developers, POSTS_PER_PAGE), path.join(OUTPUT_DIR, 'vn/developers'), devPageMapper);
 
     console.timeEnd('File generation time');
-    console.log(`Generated ${data.length + developers.length} files in total.`);
+    console.log(`Generated ${totalFilesGenerated} files in total.`);
   } catch (error) {
     console.error('Error:', error.message);
     process.exit(1);
