@@ -11,13 +11,17 @@ const POSTS_PER_PAGE = 10;
 let totalFilesGenerated = 0;
 
 // Ensure directory exists
-async function ensureDirectoryExists(dir) {
-  try {
-    await fs.access(dir);
-  } catch {
-    await fs.mkdir(dir, { recursive: true });
-  }
+async function ensureDirectoriesExist(dirs) {
+  await Promise.all(dirs.map((dir) => fs.mkdir(dir, { recursive: true }).catch(() => {}));
 }
+
+// Call this before generating files
+await ensureDirectoriesExist([
+  path.join(OUTPUT_DIR, 'vn'),
+  path.join(OUTPUT_DIR, 'vn/page'),
+  path.join(OUTPUT_DIR, 'vn/developers'),
+  path.join(OUTPUT_DIR, 'vn/developers/page'),
+]);
 
 // Fetch JSON data from a URL using native https
 async function fetchData(url) {
