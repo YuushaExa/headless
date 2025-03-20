@@ -5,7 +5,7 @@ const https = require('https');
 // Constants
 const DATA_URL = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json';
 const OUTPUT_DIR = './public';
-const POSTS_PER_PAGE = 10;
+const POSTS_PER_PAGE = 100;
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
