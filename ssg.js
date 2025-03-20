@@ -11,10 +11,13 @@ const POSTS_PER_PAGE = 10;
 let totalFilesGenerated = 0;
 
 // Ensure directories exist
-async function ensureDirectoriesExist(dirs) {
-  await Promise.all(dirs.map((dir) => fs.mkdir(dir, { recursive: true }).catch(() => {})));
+async function ensureDirectoryExists(dir) {
+  try {
+    await fs.access(dir);
+  } catch {
+    await fs.mkdir(dir, { recursive: true });
+  }
 }
-
 // Fetch JSON data from a URL using native https
 async function fetchData(url) {
   return new Promise((resolve, reject) => {
@@ -138,14 +141,6 @@ async function main() {
       console.warn('Warning: No data found. Exiting.');
       return;
     }
-
-    // Create all directories upfront
-    await ensureDirectoriesExist([
-      path.join(OUTPUT_DIR, 'vn'),
-      path.join(OUTPUT_DIR, 'vn/page'),
-      path.join(OUTPUT_DIR, 'vn/developers'),
-      path.join(OUTPUT_DIR, 'vn/developers/page'),
-    ]);
 
     // Generate paginated files for posts
     await generatePaginatedFiles({
