@@ -1,4 +1,4 @@
-const fs = require('fs').promises; // Use promises for async file operations
+const fs = require('fs').promises;
 const path = require('path');
 const https = require('https');
 
@@ -10,6 +10,11 @@ const POSTS_PER_PAGE = 10;
 // Track total number of generated files
 let totalFilesGenerated = 0;
 
+// Utility function to write JSON files with consistent formatting
+async function writeJsonFile(filePath, data) {
+  await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+}
+
 // Ensure directory exists
 async function ensureDirectoryExists(dir) {
   try {
@@ -19,27 +24,15 @@ async function ensureDirectoryExists(dir) {
   }
 }
 
-// Fetch JSON data from a URL using native https
+// Fetch JSON data from a URL
 async function fetchData(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
-      if (res.statusCode !== 200) {
-        reject(new Error(`Failed to fetch data. Status code: ${res.statusCode}`));
-        return;
-      }
-
+      if (res.statusCode !== 200) reject(new Error(`Failed to fetch data. Status code: ${res.statusCode}`));
       let data = '';
       res.on('data', (chunk) => (data += chunk));
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (error) {
-          reject(new Error(`Error parsing JSON: ${error.message}`));
-        }
-      });
-    }).on('error', (error) => {
-      reject(new Error(`Error fetching data: ${error.message}`));
-    });
+      res.on('end', () => resolve(JSON.parse(data)));
+    }).on('error', reject);
   });
 }
 
@@ -50,96 +43,99 @@ function paginateItems(items, pageSize) {
   );
 }
 
-// Generate individual item files
-async function generateItemFiles(items, baseDir, itemMapper) {
-  const writePromises = items.map(async (item, index) => {
-    const filePath = path.join(baseDir, `${item.id}.json`);
-    const itemData = itemMapper(item);
-    await fs.writeFile(filePath, JSON.stringify(itemData, null, 2));
-
-    // Increment the total file count
-    totalFilesGenerated++;
-
-    // Log the first 3 generated item files
-    if (index < 3) {
-      console.log(`Generated item file: ${filePath}`);
-    }
-  });
-
-  await Promise.all(writePromises); // Write all files in parallel
-}
-
-// Generate paginated index files
-async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
-  await ensureDirectoryExists(path.join(baseDir, 'page')); // Ensure 'page' directory exists
-
-  await Promise.all(
-    paginatedItems.map(async (page, index) => {
-      const pageNumber = index + 1;
-      const filePath =
-        pageNumber === 1
-          ? path.join(baseDir, 'index.json') // First page is vn.json
-          : path.join(baseDir, 'page', `${pageNumber}.json`); // Subsequent pages are in /page/
-      const pageData = pageMapper(page, pageNumber, paginatedItems.length);
-      await fs.writeFile(filePath, JSON.stringify(pageData, null, 2));
-
-      // Increment the total file count
-      totalFilesGenerated++;
-
-      // Log the first 3 generated paginated files
-      if (index < 3) {
-        console.log(`Generated paginated file: ${filePath}`);
-      }
-    })
-  );
+// Generate pagination links
+function generatePaginationLinks(currentPage, totalPages, basePath) {
+  return {
+    currentPage,
+    totalPages,
+    nextPage:
+      currentPage < totalPages
+        ? currentPage === 1
+          ? `${basePath}/page/2.json`
+          : `${basePath}/page/${currentPage + 1}.json`
+        : null,
+    previousPage:
+      currentPage > 1
+        ? currentPage === 2
+          ? 'index.json'
+          : `${basePath}/page/${currentPage - 1}.json`
+        : null,
+  };
 }
 
 // Generate paginated files for a given type
-async function generatePaginatedFiles(config) {
-  const { items, pageSize, basePath, itemMapper, pageMapper } = config;
+async function generatePaginatedFiles({
+  items,
+  pageSize,
+  basePath,
+  itemMapper,
+  pageMapper,
+  fileNameGenerator = (item) => `${item.id}.json`,
+}) {
   const baseDir = path.join(OUTPUT_DIR, basePath);
-
   await ensureDirectoryExists(baseDir);
 
   // Generate individual item files
-  await generateItemFiles(items, baseDir, itemMapper);
+  await Promise.all(
+    items.map(async (item, index) => {
+      const filePath = path.join(baseDir, fileNameGenerator(item));
+      await writeJsonFile(filePath, itemMapper(item));
+
+      totalFilesGenerated++;
+      if (index < 3) console.log(`Generated item file: ${filePath}`);
+    })
+  );
 
   // Paginate items and generate index files
   const paginatedItems = paginateItems(items, pageSize);
   await generatePaginatedIndex(paginatedItems, baseDir, pageMapper);
 }
 
-// Extract developers from posts
-function extractDevelopers(posts) {
-  const developersMap = new Map();
+// Generate paginated index files
+async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
+  await ensureDirectoryExists(path.join(baseDir, 'page'));
 
-  posts.forEach((post) => {
-    post.developers?.forEach((developer) => {
-      if (!developersMap.has(developer.id)) {
-        developersMap.set(developer.id, {
-          ...developer,
-          posts: [],
-        });
+  await Promise.all(
+    paginatedItems.map(async (page, index) => {
+      const pageNumber = index + 1;
+      const filePath =
+        pageNumber === 1
+          ? path.join(baseDir, 'index.json')
+          : path.join(baseDir, 'page', `${pageNumber}.json`);
+      await writeJsonFile(filePath, pageMapper(page, pageNumber, paginatedItems.length));
+
+      totalFilesGenerated++;
+      if (index < 3) console.log(`Generated paginated file: ${filePath}`);
+    })
+  );
+}
+
+// Extract related entities (e.g., developers, publishers)
+function extractRelatedEntities(items, entityKey, idKey, linkGenerator) {
+  const entityMap = new Map();
+
+  items.forEach((item) => {
+    item[entityKey]?.forEach((entity) => {
+      if (!entityMap.has(entity[idKey])) {
+        entityMap.set(entity[idKey], { ...entity, items: [] });
       }
-      developersMap.get(developer.id).posts.push({
-        id: post.id,
-        title: post.title,
-        image: post.image || null,
-        link: `vn/${post.id}.json`, // Updated link to avoid duplication
+      entityMap.get(entity[idKey]).items.push({
+        id: item.id,
+        title: item.title,
+        image: item.image || null,
+        link: linkGenerator(item),
       });
     });
   });
 
-  return Array.from(developersMap.values());
+  return Array.from(entityMap.values());
 }
 
 // Main function
 async function main() {
   try {
-    // Start the timer
     console.time('File generation time');
 
-    // Fetch and validate data
     const data = await fetchData(DATA_URL);
     if (!Array.isArray(data)) throw new Error('Fetched data is not an array.');
     if (data.length === 0) {
@@ -151,7 +147,7 @@ async function main() {
     await generatePaginatedFiles({
       items: data,
       pageSize: POSTS_PER_PAGE,
-      basePath: 'vn', // Use 'vn' as the base path
+      basePath: 'vn',
       itemMapper: (post) => ({
         id: post.id,
         title: post.title,
@@ -165,65 +161,40 @@ async function main() {
           id: post.id,
           title: post.title,
           image: post.image || null,
-          link: `vn/${post.id}.json`, // Updated link to avoid duplication
+          link: `vn/${post.id}.json`,
         })),
-        pagination: {
-          currentPage,
-          totalPages,
-          nextPage:
-            currentPage < totalPages
-              ? currentPage === 1
-                ? 'vn/page/2.json' // First page points to vn/page/2.json
-                : `vn/page/${currentPage + 1}.json` // Subsequent pages point to next page
-              : null,
-          previousPage:
-            currentPage > 1
-              ? currentPage === 2
-                ? 'index.json' // Second page points back to vn.json
-                : `vn/page/${currentPage - 1}.json` // Subsequent pages point to previous page
-              : null,
-        },
+        pagination: generatePaginationLinks(currentPage, totalPages, 'vn'),
       }),
     });
 
     // Generate paginated files for developers
-    const developers = extractDevelopers(data);
+    const developers = extractRelatedEntities(
+      data,
+      'developers',
+      'id',
+      (post) => `vn/${post.id}.json`
+    );
+
     await generatePaginatedFiles({
       items: developers,
       pageSize: POSTS_PER_PAGE,
-      basePath: 'vn/developers', // Use 'vn/developers' as the base path
+      basePath: 'vn/developers',
       itemMapper: (developer) => ({
         name: developer.name,
         id: developer.id,
-        posts: developer.posts,
-        link: `vn/developers/${developer.id}.json`, // Updated link to avoid duplication
+        posts: developer.items,
+        link: `vn/developers/${developer.id}.json`,
       }),
       pageMapper: (pageDevelopers, currentPage, totalPages) => ({
         developers: pageDevelopers.map((dev) => ({
           name: dev.name,
           id: dev.id,
-          link: `vn/developers/${dev.id}.json`, // Updated link to avoid duplication
+          link: `vn/developers/${dev.id}.json`,
         })),
-        pagination: {
-          currentPage,
-          totalPages,
-          nextPage:
-            currentPage < totalPages
-              ? currentPage === 1
-                ? 'vn/developers/page/2.json' // First page points to vn/developers/page/2.json
-                : `vn/developers/page/${currentPage + 1}.json` // Subsequent pages point to next page
-              : null,
-          previousPage:
-            currentPage > 1
-              ? currentPage === 2
-                ? 'vn/developers.json' // Second page points back to vn/developers.json
-                : `vn/developers/page/${currentPage - 1}.json` // Subsequent pages point to previous page
-              : null,
-        },
+        pagination: generatePaginationLinks(currentPage, totalPages, 'vn/developers'),
       }),
     });
 
-    // Stop the timer and log the total time and files generated
     console.timeEnd('File generation time');
     console.log(`Generated ${totalFilesGenerated} files in total.`);
   } catch (error) {
