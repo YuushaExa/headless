@@ -1,23 +1,25 @@
 module.exports = {
-  basePath: 'vn/posts', // Posts will be generated under `public/vn/posts/`
-  dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json',
-// posts
+  basePath: 'vn/posts', // Posts go under `public/vn/posts/`
+  dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/main/merged.json',
+  
+  // Maps a post to its structured format
   itemMapper: (post) => ({
     id: post.id,
     title: post.title,
-    developers: post.developers?.map((developer) => ({
-      name: developer.name,
-      id: developer.id,
-      link: `vn/developer/${developer.id}.json`, // Link to developer files
+    developers: post.developers?.map(dev => ({
+      name: dev.name,
+      id: dev.id,
+      link: `vn/developer/${dev.id}.json`, // Link to developer files
     })),
     aliases: post.aliases || [],
     description: post.description || null,
     image: post.image || null,
     link: `vn/posts/${post.id}.json`, // Link to post files
   }),
-  // pagination, index page
+
+  // Maps paginated posts with pagination details
   pageMapper: (pagePosts, currentPage, totalPages) => ({
-    posts: pagePosts.map((post) => ({
+    posts: pagePosts.map(post => ({
       id: post.id,
       title: post.title,
       image: post.image || null,
@@ -30,20 +32,21 @@ module.exports = {
       previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/posts/index.json' : `vn/posts/page/${currentPage - 1}.json`) : null,
     },
   }),
-  extractRelatedEntities: (posts) => {
-    const developersMap = {};
 
-    posts.forEach((post) => {
-      post.developers?.forEach((developer) => {
-        const developerId = developer.id;
-        if (!developersMap[developerId]) {
-          developersMap[developerId] = {
-            id: developer.id,
-            name: developer.name,
+  // Extracts related developers from posts
+  extractRelatedEntities: (posts) => {
+    const developersMap = new Map();
+
+    posts.forEach(post => {
+      post.developers?.forEach(dev => {
+        if (!developersMap.has(dev.id)) {
+          developersMap.set(dev.id, {
+            id: dev.id,
+            name: dev.name,
             posts: [],
-          };
+          });
         }
-        developersMap[developerId].posts.push({
+        developersMap.get(dev.id).posts.push({
           id: post.id,
           title: post.title,
           image: post.image || null,
@@ -52,14 +55,16 @@ module.exports = {
       });
     });
 
-    return Object.values(developersMap);
+    return Array.from(developersMap.values());
   },
+
+  // Generates paginated files for related entities (developers)
   generateRelatedEntities: async function (data, generatePaginatedFiles, POSTS_PER_PAGE) {
     const relatedEntities = this.extractRelatedEntities(data);
     await generatePaginatedFiles({
       items: relatedEntities,
       pageSize: POSTS_PER_PAGE,
-      basePath: 'vn/developer', // Developers will be generated under `public/vn/developer/`
+      basePath: 'vn/developer', // Developers go under `public/vn/developer/`
       itemMapper: (entity) => ({
         id: entity.id,
         name: entity.name,
@@ -67,7 +72,7 @@ module.exports = {
         link: `vn/developer/${entity.id}.json`,
       }),
       pageMapper: (pageEntities, currentPage, totalPages) => ({
-        developers: pageEntities.map((dev) => ({
+        developers: pageEntities.map(dev => ({
           id: dev.id,
           name: dev.name,
           link: `vn/developer/${dev.id}.json`,
