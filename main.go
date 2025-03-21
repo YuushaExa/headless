@@ -7,6 +7,7 @@ import (
     "net/http"
     "os"
     "path/filepath"
+    "sync"
 )
 
 // Constants
@@ -18,6 +19,7 @@ const (
 
 // Track total number of generated files
 var totalFilesGenerated int
+var totalFilesMutex sync.Mutex // Mutex to safely update the counter
 
 // Utility function to write JSON files with consistent formatting
 func writeJsonFile(filePath string, data interface{}) error {
@@ -146,41 +148,57 @@ func extractRelatedEntities(items []map[string]interface{}, entityKey, idKey str
 func generatePaginatedFiles(items []map[string]interface{}, pageSize int, basePath string, itemMapper func(map[string]interface{}) interface{}, pageMapper func([]map[string]interface{}, int, int) interface{}) error {
     baseDir := filepath.Join(OUTPUT_DIR, basePath)
 
-    // Generate individual item files
-    for i, item := range items {
-        filePath := filepath.Join(baseDir, fmt.Sprintf("%v.json", item["id"]))
-        err := writeJsonFile(filePath, itemMapper(item))
-        if err != nil {
-            return err
-        }
+    // Use a WaitGroup to handle concurrent file generation
+    var wg sync.WaitGroup
 
-        totalFilesGenerated++
-        if i < 3 {
-            fmt.Printf("Generated item file: %s\n", filePath)
-        }
+    // Generate individual item files concurrently
+    for _, item := range items {
+        wg.Add(1)
+        go func(item map[string]interface{}) {
+            defer wg.Done()
+
+            filePath := filepath.Join(baseDir, fmt.Sprintf("%v.json", item["id"]))
+            err := writeJsonFile(filePath, itemMapper(item))
+            if err != nil {
+                fmt.Printf("Error writing file: %v\n", err)
+                return
+            }
+
+            totalFilesMutex.Lock()
+            totalFilesGenerated++
+            totalFilesMutex.Unlock()
+        }(item)
     }
 
-    // Paginate items and generate index files
+    // Paginate items and generate index files concurrently
     paginatedItems := paginateItems(items, pageSize)
     for i, page := range paginatedItems {
-        pageNumber := i + 1
-        var filePath string
-        if pageNumber == 1 {
-            filePath = filepath.Join(baseDir, "index.json")
-        } else {
-            filePath = filepath.Join(baseDir, "page", fmt.Sprintf("%d.json", pageNumber))
-        }
+        wg.Add(1)
+        go func(page []map[string]interface{}, i int) {
+            defer wg.Done()
 
-        err := writeJsonFile(filePath, pageMapper(page, pageNumber, len(paginatedItems)))
-        if err != nil {
-            return err
-        }
+            pageNumber := i + 1
+            var filePath string
+            if pageNumber == 1 {
+                filePath = filepath.Join(baseDir, "index.json")
+            } else {
+                filePath = filepath.Join(baseDir, "page", fmt.Sprintf("%d.json", pageNumber))
+            }
 
-        totalFilesGenerated++
-        if i < 3 {
-            fmt.Printf("Generated paginated file: %s\n", filePath)
-        }
+            err := writeJsonFile(filePath, pageMapper(page, pageNumber, len(paginatedItems)))
+            if err != nil {
+                fmt.Printf("Error writing paginated file: %v\n", err)
+                return
+            }
+
+            totalFilesMutex.Lock()
+            totalFilesGenerated++
+            totalFilesMutex.Unlock()
+        }(page, i)
     }
+
+    // Wait for all goroutines to finish
+    wg.Wait()
 
     return nil
 }
