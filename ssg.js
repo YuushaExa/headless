@@ -106,7 +106,7 @@ async function main() {
 
       // Generate related entities (developers)
       if (template.generateRelatedEntities) {
-        await template.generateRelatedEntities(data, generatePaginatedFiles);
+        await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
       }
     }
 
