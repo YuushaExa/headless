@@ -4,7 +4,7 @@ const https = require('https');
 
 // Constants
 const OUTPUT_DIR = './public';
-const TEMPLATES_DIR = 'templates';
+const TEMPLATES_DIR = '/templates';
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
