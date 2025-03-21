@@ -1,6 +1,6 @@
 module.exports = {
   basePath: 'vn',
-  dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/vn.json', // Unique JSON data for /vn/
+  dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json'', // Unique JSON data for /vn/
   itemMapper: (post) => ({
     id: post.id,
     title: post.title,
