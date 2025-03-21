@@ -95,16 +95,16 @@ async function main() {
         continue;
       }
 
-      // Generate paginated files for the main items
+      // Generate paginated files for the main items (posts)
       await generatePaginatedFiles({
         items: data,
         pageSize: POSTS_PER_PAGE,
-        basePath: template.basePath,
+        basePath: template.basePath, // `vn/posts`
         itemMapper: template.itemMapper,
         pageMapper: template.pageMapper,
       });
 
-      // Generate related entities using the template's logic
+      // Generate related entities (developers)
       if (template.generateRelatedEntities) {
         await template.generateRelatedEntities(data, generatePaginatedFiles);
       }
