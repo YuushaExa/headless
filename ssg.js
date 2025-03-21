@@ -151,7 +151,11 @@ async function main() {
       itemMapper: (post) => ({
         id: post.id,
         title: post.title,
-        developers: post.developers || [],
+        developers: (post.developers || []).map((developer) => ({
+          name: developer.name,
+          id: developer.id,
+          link: generateEntityLink('developers', developer.id), // Add link for each developer
+        })),
         aliases: post.aliases || [],
         description: post.description || null,
         image: post.image || null,
