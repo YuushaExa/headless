@@ -55,31 +55,6 @@ module.exports = {
     return Array.from(developersMap.values());
   },
 
-  extractAliases: (posts) => {
-    const aliasesMap = new Map();
-
-    posts.forEach(post => {
-      if (post.aliases && post.aliases.length > 0) {
-        post.aliases.forEach(alias => {
-          if (!aliasesMap.has(alias)) {
-            aliasesMap.set(alias, {
-              alias,
-              posts: [],
-            });
-          }
-          aliasesMap.get(alias).posts.push({
-            id: post.id,
-            title: post.title,
-            image: post.image || null,
-            link: `vn/posts/${post.id}.json`,
-          });
-        });
-      }
-    });
-
-    return Array.from(aliasesMap.values());
-  },
-
   generateRelatedEntities: async function (data, generatePaginatedFiles, POSTS_PER_PAGE) {
     // Extract developers
     const developers = this.extractDevelopers(data);
@@ -110,31 +85,5 @@ module.exports = {
       }),
     });
 
-    // Extract aliases
-    const aliases = this.extractAliases(data);
-
-    // Generate paginated files for aliases
-    await generatePaginatedFiles({
-      items: aliases,
-      pageSize: POSTS_PER_PAGE,
-      basePath: 'vn/aliases', // Aliases go under `public/vn/aliases/`
-      itemMapper: (alias) => ({
-        alias: alias.alias,
-        posts: alias.posts,
-        link: `vn/aliases/${encodeURIComponent(alias.alias)}.json`, // Encode alias to handle special characters
-      }),
-      pageMapper: (pageAliases, currentPage, totalPages) => ({
-        aliases: pageAliases.map(alias => ({
-          alias: alias.alias,
-          link: `vn/aliases/${encodeURIComponent(alias.alias)}.json`,
-        })),
-        pagination: {
-          currentPage,
-          totalPages,
-          nextPage: currentPage < totalPages ? `vn/aliases/page/${currentPage + 1}.json` : null,
-          previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/aliases/index.json' : `vn/aliases/page/${currentPage - 1}.json`) : null,
-        },
-      }),
-    });
   },
 };
