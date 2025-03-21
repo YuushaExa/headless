@@ -1,5 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
+const vnTemplatePath = path.join(__dirname, 'templates', 'vn.js');
+const vnTemplate = require(vnTemplatePath);
 const https = require('https');
 
 // Constants
