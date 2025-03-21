@@ -96,6 +96,46 @@ async function generatePaginatedFiles({
   await generatePaginatedIndex(paginatedItems, baseDir, pageMapper);
 }
 
+// Generate paginated index files
+async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
+  await ensureDirectoryExists(path.join(baseDir, 'page'));
+
+  await Promise.all(
+    paginatedItems.map(async (page, index) => {
+      const pageNumber = index + 1;
+      const filePath =
+        pageNumber === 1
+          ? path.join(baseDir, 'index.json')
+          : path.join(baseDir, 'page', `${pageNumber}.json`);
+      await writeJsonFile(filePath, pageMapper(page, pageNumber, paginatedItems.length));
+
+      totalFilesGenerated++;
+      if (index < 3) console.log(`Generated paginated file: ${filePath}`);
+    })
+  );
+}
+
+// Extract related entities (e.g., developers, publishers)
+function extractRelatedEntities(items, entityKey, idKey, linkGenerator) {
+  const entityMap = new Map();
+
+  items.forEach((item) => {
+    item[entityKey]?.forEach((entity) => {
+      if (!entityMap.has(entity[idKey])) {
+        entityMap.set(entity[idKey], { ...entity, items: [] });
+      }
+      entityMap.get(entity[idKey]).items.push({
+        id: item.id,
+        title: item.title,
+        image: item.image || null,
+        link: linkGenerator(item),
+      });
+    });
+  });
+
+  return Array.from(entityMap.values());
+}
+
 // Main function
 async function main() {
   try {
