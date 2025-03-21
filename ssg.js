@@ -3,7 +3,6 @@ const path = require('path');
 const https = require('https');
 
 // Constants
-const DATA_URL = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json';
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 const TEMPLATES_DIR = path.join(__dirname, 'templates'); // Use absolute path
@@ -80,20 +79,21 @@ async function main() {
   try {
     console.time('File generation time');
 
-    const data = await fetchData(DATA_URL);
-    if (!Array.isArray(data)) throw new Error('Fetched data is not an array.');
-    if (data.length === 0) {
-      console.warn('Warning: No data found. Exiting.');
-      return;
-    }
-
     // Load templates
     const templates = await fs.readdir(TEMPLATES_DIR);
     for (const templateFile of templates) {
       const templatePath = path.join(TEMPLATES_DIR, templateFile);
+      console.log(`Loading template: ${templatePath}`);
       const template = require(templatePath);
 
-      console.log(`Generating files for template: ${template.basePath}`);
+      // Fetch data for the template
+      console.log(`Fetching data for template: ${template.basePath}`);
+      const data = await fetchData(template.dataUrl);
+      if (!Array.isArray(data)) throw new Error(`Fetched data for ${template.basePath} is not an array.`);
+      if (data.length === 0) {
+        console.warn(`Warning: No data found for ${template.basePath}. Skipping.`);
+        continue;
+      }
 
       // Generate paginated files for the main items
       await generatePaginatedFiles({
