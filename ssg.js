@@ -63,11 +63,6 @@ function generatePaginationLinks(currentPage, totalPages, basePath) {
   };
 }
 
-// Utility function to generate links for entities
-function generateEntityLink(entityType, entityId) {
-  return `vn/${entityType}/${entityId}.json`;
-}
-
 // Generate paginated files for a given type
 async function generatePaginatedFiles({
   items,
@@ -156,11 +151,11 @@ async function main() {
       itemMapper: (post) => ({
         id: post.id,
         title: post.title,
-        developers: (post.developers || []).map((developer) => ({
-          name: developer.name,
-          id: developer.id,
-          link: generateEntityLink('developers', developer.id), // Add link for each developer
-        })),
+ developers: (post.developers || []).map((developer) => ({
+    name: developer.name,
+    id: developer.id,
+    link: `vn/${developer.id}.json`,
+  })),
         aliases: post.aliases || [],
         description: post.description || null,
         image: post.image || null,
@@ -191,19 +186,14 @@ async function main() {
       itemMapper: (developer) => ({
         name: developer.name,
         id: developer.id,
-        link: generateEntityLink('developers', developer.id), // Add link for the developer itself
-        posts: developer.items.map((post) => ({
-          id: post.id,
-          title: post.title,
-          image: post.image || null,
-          link: post.link, // Link already generated in extractRelatedEntities
-        })),
+        posts: developer.items,
+        link: `vn/developers/${developer.id}.json`,
       }),
       pageMapper: (pageDevelopers, currentPage, totalPages) => ({
         developers: pageDevelopers.map((dev) => ({
           name: dev.name,
           id: dev.id,
-          link: generateEntityLink('developers', dev.id), // Add link for each developer
+          link: `vn/developers/${dev.id}.json`,
         })),
         pagination: generatePaginationLinks(currentPage, totalPages, 'vn/developers'),
       }),
