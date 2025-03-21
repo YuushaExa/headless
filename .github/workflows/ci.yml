@@ -15,7 +15,7 @@ jobs:
     steps:
       # Step 1: Check out the repository
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Step 2: Set up Go
       - name: Set up Go
@@ -37,7 +37,7 @@ jobs:
 
       # Step 6: Upload generated files as artifacts (optional)
       - name: Upload public files
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-pages-artifact@v3
         with:
           name: public-files
           path: ./public
