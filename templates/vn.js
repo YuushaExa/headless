@@ -1,18 +1,18 @@
 module.exports = {
-  basePath: 'vn',
-  dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json', // Unique JSON data for /vn/
+  basePath: 'vn/posts', // Posts will be generated under `public/vn/posts/`
+  dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json',
   itemMapper: (post) => ({
     id: post.id,
     title: post.title,
     developers: post.developers?.map((developer) => ({
       name: developer.name,
       id: developer.id,
-      link: `vn/developers/${developer.id}.json`,
+      link: `vn/developer/${developer.id}.json`, // Link to developer files
     })),
     aliases: post.aliases || [],
     description: post.description || null,
     image: post.image || null,
-    link: `vn/posts/${post.id}.json`,
+    link: `vn/posts/${post.id}.json`, // Link to post files
   }),
   pageMapper: (pagePosts, currentPage, totalPages) => ({
     posts: pagePosts.map((post) => ({
@@ -51,5 +51,32 @@ module.exports = {
     });
 
     return Object.values(developersMap);
+  },
+  generateRelatedEntities: async function (data, generatePaginatedFiles) {
+    const relatedEntities = this.extractRelatedEntities(data);
+    await generatePaginatedFiles({
+      items: relatedEntities,
+      pageSize: POSTS_PER_PAGE,
+      basePath: 'vn/developer', // Developers will be generated under `public/vn/developer/`
+      itemMapper: (entity) => ({
+        id: entity.id,
+        name: entity.name,
+        posts: entity.posts,
+        link: `vn/developer/${entity.id}.json`,
+      }),
+      pageMapper: (pageEntities, currentPage, totalPages) => ({
+        developers: pageEntities.map((dev) => ({
+          id: dev.id,
+          name: dev.name,
+          link: `vn/developer/${dev.id}.json`,
+        })),
+        pagination: {
+          currentPage,
+          totalPages,
+          nextPage: currentPage < totalPages ? `vn/developer/page/${currentPage + 1}.json` : null,
+          previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/developer/index.json' : `vn/developer/page/${currentPage - 1}.json`) : null,
+        },
+      }),
+    });
   },
 };
