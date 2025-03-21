@@ -70,7 +70,7 @@ async function generatePaginatedFiles({
   basePath,
   itemMapper,
   pageMapper,
-  fileNameGenerator = (item) => `posts/${item.id}.json`,
+  fileNameGenerator = (item) => `${item.id}.json`,
 }) {
   const baseDir = path.join(OUTPUT_DIR, basePath);
   await ensureDirectoryExists(baseDir);
@@ -151,7 +151,7 @@ async function main() {
       itemMapper: (post) => ({
         id: post.id,
         title: post.title,
- developers: (post.developers || []).map((developer) => ({
+        developers: (post.developers || []).map((developer) => ({
     name: developer.name,
     id: developer.id,
     link: `vn/developers/${developer.id}.json`,
@@ -159,6 +159,7 @@ async function main() {
         aliases: post.aliases || [],
         description: post.description || null,
         image: post.image || null,
+        link: `vn/posts/${post.id}.json`,
       }),
       pageMapper: (pagePosts, currentPage, totalPages) => ({
         posts: pagePosts.map((post) => ({
