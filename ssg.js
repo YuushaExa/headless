@@ -176,7 +176,7 @@ async function main() {
       data,
       'developers',
       'id',
-      (post) => `vn/${post.id}.json`
+      (post) => `vn/posts/${post.id}.json`
     );
 
     await generatePaginatedFiles({
