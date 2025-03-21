@@ -165,7 +165,7 @@ async function main() {
           id: post.id,
           title: post.title,
           image: post.image || null,
-          link: `vn/${post.id}.json`,
+          link: `vn/posts/${post.id}.json`,
         })),
         pagination: generatePaginationLinks(currentPage, totalPages, 'vn'),
       }),
