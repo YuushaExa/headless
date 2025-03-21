@@ -1,6 +1,7 @@
 module.exports = {
   basePath: 'vn/posts', // Posts will be generated under `public/vn/posts/`
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json',
+// posts
   itemMapper: (post) => ({
     id: post.id,
     title: post.title,
@@ -14,6 +15,7 @@ module.exports = {
     image: post.image || null,
     link: `vn/posts/${post.id}.json`, // Link to post files
   }),
+  // pagination, index page
   pageMapper: (pagePosts, currentPage, totalPages) => ({
     posts: pagePosts.map((post) => ({
       id: post.id,
