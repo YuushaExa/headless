@@ -4,7 +4,7 @@ const https = require('https');
 
 // Constants
 const OUTPUT_DIR = './public';
-const TEMPLATES_DIR = './templates';
+const TEMPLATES_DIR = path.join(__dirname, 'templates'); // Use __dirname to get the script's directory
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
@@ -75,22 +75,18 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
 
 // Load templates from the templates directory
 async function loadTemplates() {
-  try {
-    const templateFiles = await fs.readdir(TEMPLATES_DIR);
-    console.log('Template files found:', templateFiles); // Debugging log
+  const templateFiles = await fs.readdir(TEMPLATES_DIR);
+  console.log('Template files found:', templateFiles);
 
-    const templates = {};
-    for (const file of templateFiles) {
-      const templateName = path.basename(file, '.js');
-      console.log(`Loading template: ${templateName}`); // Debugging log
-      templates[templateName] = require(path.join(TEMPLATES_DIR, file));
-    }
-
-    return templates;
-  } catch (error) {
-    console.error('Error loading templates:', error.message);
-    throw error;
+  const templates = {};
+  for (const file of templateFiles) {
+    const templateName = path.basename(file, '.js');
+    console.log(`Loading template: ${templateName}`);
+    const templatePath = path.join(TEMPLATES_DIR, file);
+    templates[templateName] = require(templatePath); // Use absolute path
   }
+
+  return templates;
 }
 
 // Main function
