@@ -35,9 +35,9 @@ jobs:
       - name: Run
         run: ./main
 
-      # Step 6: Upload generated files as artifacts (optional)
-      - name: Upload public files
-        uses: actions/upload-pages-artifact@v3
+      # Step 6: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
         with:
-          name: public-files
           path: ./public
