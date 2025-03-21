@@ -1,7 +1,6 @@
 module.exports = {
   basePath: 'vn/posts', // Posts will be generated under `public/vn/posts/`
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json',
-  const POSTS_PER_PAGE = 10,
   itemMapper: (post) => ({
     id: post.id,
     title: post.title,
@@ -53,7 +52,7 @@ module.exports = {
 
     return Object.values(developersMap);
   },
-  generateRelatedEntities: async function (data, generatePaginatedFiles) {
+  generateRelatedEntities: async function (data, generatePaginatedFiles, POSTS_PER_PAGE) {
     const relatedEntities = this.extractRelatedEntities(data);
     await generatePaginatedFiles({
       items: relatedEntities,
