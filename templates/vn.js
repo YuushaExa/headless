@@ -1,5 +1,6 @@
 module.exports = {
   basePath: 'vn',
+  dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/vn.json',
   itemMapper: (post) => ({
     id: post.id,
     title: post.title,
