@@ -75,15 +75,22 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
 
 // Load templates from the templates directory
 async function loadTemplates() {
-  const templateFiles = await fs.readdir(TEMPLATES_DIR);
-  const templates = {};
+  try {
+    const templateFiles = await fs.readdir(TEMPLATES_DIR);
+    console.log('Template files found:', templateFiles); // Debugging log
 
-  for (const file of templateFiles) {
-    const templateName = path.basename(file, '.js');
-    templates[templateName] = require(path.join(TEMPLATES_DIR, file));
+    const templates = {};
+    for (const file of templateFiles) {
+      const templateName = path.basename(file, '.js');
+      console.log(`Loading template: ${templateName}`); // Debugging log
+      templates[templateName] = require(path.join(TEMPLATES_DIR, file));
+    }
+
+    return templates;
+  } catch (error) {
+    console.error('Error loading templates:', error.message);
+    throw error;
   }
-
-  return templates;
 }
 
 // Main function
