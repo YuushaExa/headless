@@ -3,13 +3,8 @@ const path = require('path');
 const https = require('https');
 
 // Constants
-const DATA_URL = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json';
 const OUTPUT_DIR = './public';
-const POSTS_PER_PAGE = 10;
-
-// Paths
-const POSTS_PATH = 'vn/posts';
-const DEVELOPERS_PATH = 'vn/developers';
+const TEMPLATES_DIR = './templates';
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
@@ -20,7 +15,7 @@ async function writeJsonFile(filePath, data) {
 }
 
 // Fetch JSON data from a URL
-async function fetchData(url) {
+function fetchData(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
       if (res.statusCode !== 200) reject(new Error(`Failed to fetch data. Status code: ${res.statusCode}`));
@@ -38,14 +33,6 @@ function paginateItems(items, pageSize) {
     pages.push(items.slice(i, i + pageSize));
   }
   return pages;
-}
-
-// Generate pagination links
-function generatePaginationLinks(currentPage, totalPages, basePath) {
-  const nextPage = currentPage < totalPages ? `${basePath}/page/${currentPage + 1}.json` : null;
-  const previousPage = currentPage > 1 ? (currentPage === 2 ? 'index.json' : `${basePath}/page/${currentPage - 1}.json`) : null;
-
-  return { currentPage, totalPages, nextPage, previousPage };
 }
 
 // Generate paginated files for a given type
@@ -86,30 +73,17 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
   );
 }
 
-// Extract related entities (e.g., developers)
-function extractDevelopers(posts) {
-  const developersMap = {};
+// Load templates from the templates directory
+async function loadTemplates() {
+  const templateFiles = await fs.readdir(TEMPLATES_DIR);
+  const templates = {};
 
-  posts.forEach((post) => {
-    post.developers?.forEach((developer) => {
-      const developerId = developer.id;
-      if (!developersMap[developerId]) {
-        developersMap[developerId] = {
-          id: developer.id,
-          name: developer.name,
-          posts: [],
-        };
-      }
-      developersMap[developerId].posts.push({
-        id: post.id,
-        title: post.title,
-        image: post.image || null,
-        link: `${POSTS_PATH}/${post.id}.json`,
-      });
-    });
-  });
+  for (const file of templateFiles) {
+    const templateName = path.basename(file, '.js');
+    templates[templateName] = require(path.join(TEMPLATES_DIR, file));
+  }
 
-  return Object.values(developersMap);
+  return templates;
 }
 
 // Main function
@@ -117,64 +91,19 @@ async function main() {
   try {
     console.time('File generation time');
 
-    const data = await fetchData(DATA_URL);
-    if (!Array.isArray(data)) throw new Error('Fetched data is not an array.');
-    if (data.length === 0) {
-      console.warn('Warning: No data found. Exiting.');
-      return;
+    // Load templates
+    const templates = await loadTemplates();
+
+    // Process each template
+    for (const [templateName, template] of Object.entries(templates)) {
+      console.log(`Processing template: ${templateName}`);
+
+      // Delegate file generation to the template
+      await template.generateFiles({
+        fetchData,
+        generatePaginatedFiles,
+      });
     }
-
-    // Generate paginated files for posts
-    await generatePaginatedFiles({
-      items: data,
-      pageSize: POSTS_PER_PAGE,
-      basePath: POSTS_PATH,
-      itemMapper: (post) => ({
-        id: post.id,
-        title: post.title,
-        developers: post.developers?.map((developer) => ({
-          name: developer.name,
-          id: developer.id,
-          link: `${DEVELOPERS_PATH}/${developer.id}.json`,
-        })),
-        aliases: post.aliases || [],
-        description: post.description || null,
-        image: post.image || null,
-        link: `${POSTS_PATH}/${post.id}.json`,
-      }),
-      pageMapper: (pagePosts, currentPage, totalPages) => ({
-        posts: pagePosts.map((post) => ({
-          id: post.id,
-          title: post.title,
-          image: post.image || null,
-          link: `${POSTS_PATH}/${post.id}.json`,
-        })),
-        pagination: generatePaginationLinks(currentPage, totalPages, POSTS_PATH),
-      }),
-    });
-
-    // Extract developers and generate developer files
-    const developers = extractDevelopers(data);
-
-    await generatePaginatedFiles({
-      items: developers,
-      pageSize: POSTS_PER_PAGE,
-      basePath: DEVELOPERS_PATH,
-      itemMapper: (developer) => ({
-        id: developer.id,
-        name: developer.name,
-        posts: developer.posts,
-        link: `${DEVELOPERS_PATH}/${developer.id}.json`,
-      }),
-      pageMapper: (pageDevelopers, currentPage, totalPages) => ({
-        developers: pageDevelopers.map((dev) => ({
-          id: dev.id,
-          name: dev.name,
-          link: `${DEVELOPERS_PATH}/${dev.id}.json`,
-        })),
-        pagination: generatePaginationLinks(currentPage, totalPages, DEVELOPERS_PATH),
-      }),
-    });
 
     console.timeEnd('File generation time');
     console.log(`Generated ${totalFilesGenerated} files in total.`);
