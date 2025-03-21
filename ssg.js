@@ -1,14 +1,12 @@
 const fs = require('fs').promises;
 const path = require('path');
-const vnTemplatePath = path.join(__dirname, 'templates', 'vn.js');
-const vnTemplate = require(vnTemplatePath);
 const https = require('https');
 
 // Constants
 const DATA_URL = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json';
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
-const TEMPLATES_DIR = './templates';
+const TEMPLATES_DIR = path.join(__dirname, 'templates'); // Use absolute path
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
