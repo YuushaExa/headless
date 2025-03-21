@@ -177,6 +177,7 @@ async function main() {
       data,
       'developers',
       'id',
+      (post) => ``
     );
 
     await generatePaginatedFiles({
