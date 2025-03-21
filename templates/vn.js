@@ -1,6 +1,7 @@
 module.exports = {
   basePath: 'vn/posts', // Posts will be generated under `public/vn/posts/`
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json',
+  const POSTS_PER_PAGE = 10,
   itemMapper: (post) => ({
     id: post.id,
     title: post.title,
