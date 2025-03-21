@@ -3,8 +3,10 @@ const path = require('path');
 const https = require('https');
 
 // Constants
+const DATA_URL = 'https://raw.githubusercontent.com/YuushaExa/testapi/refs/heads/main/merged.json';
 const OUTPUT_DIR = './public';
-const TEMPLATES_DIR = path.join(__dirname, 'templates'); // Use __dirname to get the script's directory
+const POSTS_PER_PAGE = 10;
+const TEMPLATES_DIR = './templates';
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
@@ -15,7 +17,7 @@ async function writeJsonFile(filePath, data) {
 }
 
 // Fetch JSON data from a URL
-function fetchData(url) {
+async function fetchData(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
       if (res.statusCode !== 200) reject(new Error(`Failed to fetch data. Status code: ${res.statusCode}`));
@@ -73,38 +75,51 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
   );
 }
 
-// Load templates from the templates directory
-async function loadTemplates() {
-  const templateFiles = await fs.readdir(TEMPLATES_DIR);
-  console.log('Template files found:', templateFiles);
-
-  const templates = {};
-  for (const file of templateFiles) {
-    const templateName = path.basename(file, '.js');
-    console.log(`Loading template: ${templateName}`);
-    const templatePath = path.join(TEMPLATES_DIR, file);
-    templates[templateName] = require(templatePath); // Use absolute path
-  }
-
-  return templates;
-}
-
 // Main function
 async function main() {
   try {
     console.time('File generation time');
 
+    const data = await fetchData(DATA_URL);
+    if (!Array.isArray(data)) throw new Error('Fetched data is not an array.');
+    if (data.length === 0) {
+      console.warn('Warning: No data found. Exiting.');
+      return;
+    }
+
     // Load templates
-    const templates = await loadTemplates();
+    const templates = await fs.readdir(TEMPLATES_DIR);
+    for (const templateFile of templates) {
+      const templatePath = path.join(TEMPLATES_DIR, templateFile);
+      const template = require(templatePath);
 
-    // Process each template
-    for (const [templateName, template] of Object.entries(templates)) {
-      console.log(`Processing template: ${templateName}`);
+      console.log(`Generating files for template: ${template.basePath}`);
 
-      // Delegate file generation to the template
-      await template.generateFiles({
-        fetchData,
-        generatePaginatedFiles,
+      // Generate paginated files for the main items
+      await generatePaginatedFiles({
+        items: data,
+        pageSize: POSTS_PER_PAGE,
+        basePath: template.basePath,
+        itemMapper: template.itemMapper,
+        pageMapper: template.pageMapper,
+      });
+
+      // Extract related entities and generate their files
+      const relatedEntities = template.extractRelatedEntities(data);
+      await generatePaginatedFiles({
+        items: relatedEntities,
+        pageSize: POSTS_PER_PAGE,
+        basePath: `${template.basePath}/related`,
+        itemMapper: (entity) => entity,
+        pageMapper: (pageEntities, currentPage, totalPages) => ({
+          entities: pageEntities,
+          pagination: {
+            currentPage,
+            totalPages,
+            nextPage: currentPage < totalPages ? `${template.basePath}/related/page/${currentPage + 1}.json` : null,
+            previousPage: currentPage > 1 ? (currentPage === 2 ? `${template.basePath}/related/index.json` : `${template.basePath}/related/page/${currentPage - 1}.json`) : null,
+          },
+        }),
       });
     }
 
