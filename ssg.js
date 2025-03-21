@@ -9,7 +9,6 @@ const POSTS_PER_PAGE = 10;
 
 // Paths
 const POSTS_PATH = 'vn/posts';
-const DEVELOPERS_PATH = 'vn/developers';
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
@@ -86,28 +85,6 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
   );
 }
 
-// Extract related entities (e.g., developers, publishers)
-function extractRelatedEntities(items, entityKey, idKey, linkGenerator) {
-  const entities = {};
-
-  items.forEach((item) => {
-    item[entityKey]?.forEach((entity) => {
-      const entityId = entity[idKey];
-      if (!entities[entityId]) {
-        entities[entityId] = { ...entity, items: [] };
-      }
-      entities[entityId].items.push({
-        id: item.id,
-        title: item.title,
-        image: item.image || null,
-        link: linkGenerator(item),
-      });
-    });
-  });
-
-  return Object.values(entities);
-}
-
 // Main function
 async function main() {
   try {
@@ -131,7 +108,6 @@ async function main() {
         developers: post.developers?.map((developer) => ({
           name: developer.name,
           id: developer.id,
-          link: `${DEVELOPERS_PATH}/${developer.id}.json`,
         })),
         aliases: post.aliases || [],
         description: post.description || null,
@@ -146,34 +122,6 @@ async function main() {
           link: `${POSTS_PATH}/${post.id}.json`,
         })),
         pagination: generatePaginationLinks(currentPage, totalPages, POSTS_PATH),
-      }),
-    });
-
-    // Generate paginated files for developers
-    const developers = extractRelatedEntities(
-      data,
-      'developers',
-      'id',
-      (post) => `${POSTS_PATH}/${post.id}.json`
-    );
-
-    await generatePaginatedFiles({
-      items: developers,
-      pageSize: POSTS_PER_PAGE,
-      basePath: DEVELOPERS_PATH,
-      itemMapper: (developer) => ({
-        name: developer.name,
-        id: developer.id,
-        posts: developer.items,
-        link: `${DEVELOPERS_PATH}/${developer.id}.json`,
-      }),
-      pageMapper: (pageDevelopers, currentPage, totalPages) => ({
-        developers: pageDevelopers.map((dev) => ({
-          name: dev.name,
-          id: dev.id,
-          link: `${DEVELOPERS_PATH}/${dev.id}.json`,
-        })),
-        pagination: generatePaginationLinks(currentPage, totalPages, DEVELOPERS_PATH),
       }),
     });
 
