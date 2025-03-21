@@ -37,18 +37,20 @@ function paginateItems(items, pageSize) {
 }
 
 // Generate paginated files for a given type
-async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, pageMapper }) {
+async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, pageMapper, fileNameGenerator = (item) => `${item.id}.json` }) {
   const baseDir = path.join(OUTPUT_DIR, basePath);
   await fs.mkdir(baseDir, { recursive: true });
 
   // Generate individual item files
   await Promise.all(
     items.map(async (item, index) => {
-      const filePath = path.join(baseDir, `${item.id}.json`);
+      const filePath = path.join(baseDir, fileNameGenerator(item));
       await writeJsonFile(filePath, itemMapper(item));
 
       totalFilesGenerated++;
-      if (totalFilesGenerated <= 3) console.log(`Generated item file: ${filePath}`);
+      if (index < 3) { // Log only the first 3 files
+        console.log(`Generated item file: ${filePath}`);
+      }
     })
   );
 
@@ -56,7 +58,6 @@ async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, p
   const paginatedItems = paginateItems(items, pageSize);
   await generatePaginatedIndex(paginatedItems, baseDir, pageMapper);
 }
-
 // Generate paginated index files
 async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
   const pageDir = path.join(baseDir, 'page');
