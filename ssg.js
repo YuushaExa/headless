@@ -70,7 +70,7 @@ async function generatePaginatedFiles({
   basePath,
   itemMapper,
   pageMapper,
-  fileNameGenerator = (item) => `${item.id}.json`,
+  fileNameGenerator = (item) => `/posts/${item.id}.json`,
 }) {
   const baseDir = path.join(OUTPUT_DIR, basePath);
   await ensureDirectoryExists(baseDir);
