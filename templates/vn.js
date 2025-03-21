@@ -1,23 +1,21 @@
 module.exports = {
-  basePath: 'vn/posts', // Posts go under `public/vn/posts/`
+  basePath: 'vn/posts',
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/main/merged.json',
-  
-  // Maps a post to its structured format
+
   itemMapper: (post) => ({
     id: post.id,
     title: post.title,
     developers: post.developers?.map(dev => ({
       name: dev.name,
       id: dev.id,
-      link: `vn/developers/${dev.id}.json`, // Link to developer files
+      link: `vn/developers/${dev.id}.json`,
     })),
     aliases: post.aliases || [],
     description: post.description || null,
     image: post.image || null,
-    link: `vn/posts/${post.id}.json`, // Link to post files
+    link: `vn/posts/${post.id}.json`,
   }),
 
-  // Maps paginated posts with pagination details
   pageMapper: (pagePosts, currentPage, totalPages) => ({
     posts: pagePosts.map(post => ({
       id: post.id,
@@ -33,8 +31,7 @@ module.exports = {
     },
   }),
 
-  // Extracts related developers from posts
-  extractRelatedEntities: (posts) => {
+  extractDevelopers: (posts) => {
     const developersMap = new Map();
 
     posts.forEach(post => {
@@ -58,11 +55,38 @@ module.exports = {
     return Array.from(developersMap.values());
   },
 
-  // Generates paginated files for related entities (developers)
+  extractAliases: (posts) => {
+    const aliasesMap = new Map();
+
+    posts.forEach(post => {
+      if (post.aliases && post.aliases.length > 0) {
+        post.aliases.forEach(alias => {
+          if (!aliasesMap.has(alias)) {
+            aliasesMap.set(alias, {
+              alias,
+              posts: [],
+            });
+          }
+          aliasesMap.get(alias).posts.push({
+            id: post.id,
+            title: post.title,
+            image: post.image || null,
+            link: `vn/posts/${post.id}.json`,
+          });
+        });
+      }
+    });
+
+    return Array.from(aliasesMap.values());
+  },
+
   generateRelatedEntities: async function (data, generatePaginatedFiles, POSTS_PER_PAGE) {
-    const relatedEntities = this.extractRelatedEntities(data);
+    // Extract developers
+    const developers = this.extractDevelopers(data);
+
+    // Generate paginated files for developers
     await generatePaginatedFiles({
-      items: relatedEntities,
+      items: developers,
       pageSize: POSTS_PER_PAGE,
       basePath: 'vn/developers', // Developers go under `public/vn/developers/`
       itemMapper: (dev) => ({
@@ -82,6 +106,33 @@ module.exports = {
           totalPages,
           nextPage: currentPage < totalPages ? `vn/developers/page/${currentPage + 1}.json` : null,
           previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/developers/index.json' : `vn/developers/page/${currentPage - 1}.json`) : null,
+        },
+      }),
+    });
+
+    // Extract aliases
+    const aliases = this.extractAliases(data);
+
+    // Generate paginated files for aliases
+    await generatePaginatedFiles({
+      items: aliases,
+      pageSize: POSTS_PER_PAGE,
+      basePath: 'vn/aliases', // Aliases go under `public/vn/aliases/`
+      itemMapper: (alias) => ({
+        alias: alias.alias,
+        posts: alias.posts,
+        link: `vn/aliases/${encodeURIComponent(alias.alias)}.json`, // Encode alias to handle special characters
+      }),
+      pageMapper: (pageAliases, currentPage, totalPages) => ({
+        aliases: pageAliases.map(alias => ({
+          alias: alias.alias,
+          link: `vn/aliases/${encodeURIComponent(alias.alias)}.json`,
+        })),
+        pagination: {
+          currentPage,
+          totalPages,
+          nextPage: currentPage < totalPages ? `vn/aliases/page/${currentPage + 1}.json` : null,
+          previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/aliases/index.json' : `vn/aliases/page/${currentPage - 1}.json`) : null,
         },
       }),
     });
