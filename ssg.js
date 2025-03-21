@@ -154,7 +154,7 @@ async function main() {
  developers: (post.developers || []).map((developer) => ({
     name: developer.name,
     id: developer.id,
-    link: `vn/${developer.id}.json`,
+    link: `vn/developers/${developer.id}.json`,
   })),
         aliases: post.aliases || [],
         description: post.description || null,
