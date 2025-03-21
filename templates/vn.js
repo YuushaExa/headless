@@ -9,7 +9,7 @@ module.exports = {
     developers: post.developers?.map(dev => ({
       name: dev.name,
       id: dev.id,
-      link: `vn/developer/${dev.id}.json`, // Link to developer files
+      link: `vn/developers/${dev.id}.json`, // Link to developer files
     })),
     aliases: post.aliases || [],
     description: post.description || null,
@@ -64,24 +64,24 @@ module.exports = {
     await generatePaginatedFiles({
       items: relatedEntities,
       pageSize: POSTS_PER_PAGE,
-      basePath: 'vn/developer', // Developers go under `public/vn/developer/`
-      itemMapper: (entity) => ({
-        id: entity.id,
-        name: entity.name,
-        posts: entity.posts,
-        link: `vn/developer/${entity.id}.json`,
+      basePath: 'vn/developers', // Developers go under `public/vn/developers/`
+      itemMapper: (dev) => ({
+        id: dev.id,
+        name: dev.name,
+        posts: dev.posts,
+        link: `vn/developers/${dev.id}.json`,
       }),
       pageMapper: (pageEntities, currentPage, totalPages) => ({
         developers: pageEntities.map(dev => ({
           id: dev.id,
           name: dev.name,
-          link: `vn/developer/${dev.id}.json`,
+          link: `vn/developers/${dev.id}.json`,
         })),
         pagination: {
           currentPage,
           totalPages,
-          nextPage: currentPage < totalPages ? `vn/developer/page/${currentPage + 1}.json` : null,
-          previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/developer/index.json' : `vn/developer/page/${currentPage - 1}.json`) : null,
+          nextPage: currentPage < totalPages ? `vn/developers/page/${currentPage + 1}.json` : null,
+          previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/developers/index.json' : `vn/developers/page/${currentPage - 1}.json`) : null,
         },
       }),
     });
