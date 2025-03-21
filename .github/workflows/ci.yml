@@ -1,0 +1,43 @@
+name: CI Workflow
+
+on:
+  push:
+    branches:
+      - main # Trigger on pushes to the main branch
+  pull_request:
+    branches:
+      - main # Trigger on pull requests to the main branch
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Go
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20' # Specify the Go version
+
+      # Step 3: Install dependencies
+      - name: Install dependencies
+        run: go mod tidy
+
+      # Step 4: Build the Go application
+      - name: Build
+        run: go build -o main .
+
+      # Step 5: Run the Go application
+      - name: Run
+        run: ./main
+
+      # Step 6: Upload generated files as artifacts (optional)
+      - name: Upload public files
+        uses: actions/upload-artifact@v3
+        with:
+          name: public-files
+          path: ./public
