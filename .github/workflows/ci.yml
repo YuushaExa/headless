@@ -35,6 +35,12 @@ jobs:
       - name: Run
         run: ./main
 
+      - name: Upload public files
+        uses: actions/upload-pages-artifact@v3
+        with:
+         name: public-files
+         path: ./public
+
       # Step 6: Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         id: deployment
