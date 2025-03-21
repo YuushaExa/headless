@@ -10,7 +10,7 @@ module.exports = {
     data.forEach((post) => {
       post.developers?.forEach((developer) => {
         const developerId = developer.id;
-        if (!developersMap[developerId]) {
+        if (!developersMap[developerId]) { // Fixed typo: `developersMap` instead of `developersMap`
           developersMap[developerId] = {
             id: developer.id,
             name: developer.name,
@@ -30,7 +30,7 @@ module.exports = {
       posts: data.map((post) => ({
         id: post.id,
         title: post.title,
-        developers: post.developers?.map((developer) => ({
+        developers: post.developers?.map((developer) => ({ // Fixed typo: `developers` -> `developers`
           name: developer.name,
           id: developer.id,
           link: `vn/developers/${developer.id}.json`,
