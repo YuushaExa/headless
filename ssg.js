@@ -104,23 +104,10 @@ async function main() {
         pageMapper: template.pageMapper,
       });
 
-      // Extract related entities and generate their files
-      const relatedEntities = template.extractRelatedEntities(data);
-      await generatePaginatedFiles({
-        items: relatedEntities,
-        pageSize: POSTS_PER_PAGE,
-        basePath: `${template.basePath}/related`,
-        itemMapper: (entity) => entity,
-        pageMapper: (pageEntities, currentPage, totalPages) => ({
-          entities: pageEntities,
-          pagination: {
-            currentPage,
-            totalPages,
-            nextPage: currentPage < totalPages ? `${template.basePath}/related/page/${currentPage + 1}.json` : null,
-            previousPage: currentPage > 1 ? (currentPage === 2 ? `${template.basePath}/related/index.json` : `${template.basePath}/related/page/${currentPage - 1}.json`) : null,
-          },
-        }),
-      });
+      // Generate related entities using the template's logic
+      if (template.generateRelatedEntities) {
+        await template.generateRelatedEntities(data, generatePaginatedFiles);
+      }
     }
 
     console.timeEnd('File generation time');
