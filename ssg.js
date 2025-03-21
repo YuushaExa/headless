@@ -147,7 +147,7 @@ async function main() {
     await generatePaginatedFiles({
       items: data,
       pageSize: POSTS_PER_PAGE,
-      basePath: 'vn',
+      basePath: 'vn/posts',
       itemMapper: (post) => ({
         id: post.id,
         title: post.title,
