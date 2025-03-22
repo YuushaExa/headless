@@ -115,7 +115,7 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
     }
 
     tokens.forEach((word) => {
-      const prefix = word.slice(0, 3); // Extract the first two letters
+      const prefix = word.slice(0, 2); // Extract the first two letters, 3 ideal, 2 for accuracy 
       if (!prefixIndexes[prefix]) {
         prefixIndexes[prefix] = {}; // Initialize the prefix object
       }
