@@ -115,7 +115,7 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
     }
 
     tokens.forEach((word) => {
-      const prefix = word.slice(0, 2); // Extract the first two letters
+      const prefix = word.slice(0, 3); // Extract the first two letters
       if (!prefixIndexes[prefix]) {
         prefixIndexes[prefix] = {}; // Initialize the prefix object
       }
@@ -145,7 +145,7 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
       console.log(`Generated search index file: ${filePath}`);
     })
   );
-
+  
   console.log(`Search index generated successfully for ${this.basePath}.`);
 },
   
