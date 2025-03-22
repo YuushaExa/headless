@@ -119,27 +119,28 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
   // Metadata storage
   const metadata = {};
 
-  data.forEach((doc) => {
-    const id = doc.id;
-    metadata[id] = doc;
+tokens.forEach((word) => {
+  const range = ranges.find((r) => r.test(word));
+  if (range) {
+    if (!rangeIndexes[range.name]) {
+      rangeIndexes[range.name] = {}; // Ensure the range object exists
+    }
+    if (!rangeIndexes[range.name][word]) {
+      rangeIndexes[range.name][word] = new Set(); // Initialize as a Set
+    }
 
-    // Tokenize title and description
-    const tokens = [...tokenize(doc.title), ...tokenize(doc.description || '')];
+    console.log(`Processing word: "${word}"`);
+    console.log(`Type of rangeIndexes[${range.name}][${word}]:`, typeof rangeIndexes[range.name][word]);
+    console.log(`Is Set?`, rangeIndexes[range.name][word] instanceof Set);
 
-    tokens.forEach((word) => {
-      // Ensure the rangeIndexes structure is properly initialized
-      const range = ranges.find((r) => r.test(word));
-      if (range) {
-        if (!rangeIndexes[range.name]) {
-          rangeIndexes[range.name] = {}; // Ensure the range object exists
-        }
-        if (!rangeIndexes[range.name][word]) {
-          rangeIndexes[range.name][word] = new Set(); // Initialize as a Set
-        }
-        rangeIndexes[range.name][word].add(id); // Add the document ID to the Set
-      }
-    });
-  });
+    // Ensure it's still a Set before calling .add()
+    if (!(rangeIndexes[range.name][word] instanceof Set)) {
+      throw new Error(`Expected a Set but got ${typeof rangeIndexes[range.name][word]} for word "${word}"`);
+    }
+
+    rangeIndexes[range.name][word].add(id); // Add the document ID to the Set
+  }
+});
 
   // Convert Sets to Arrays for JSON serialization
   for (const range of ranges) {
