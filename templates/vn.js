@@ -96,7 +96,7 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, '') // Remove punctuation
       .split(/\s+/) // Split by whitespace
-      .filter((word) => word.length > 2); // Ignore short words
+      .filter((word) => word.length > 1); // Ignore short words
   }
 
   // Initialize inverted indexes for each two-letter prefix
