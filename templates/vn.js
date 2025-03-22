@@ -102,7 +102,7 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
   // Initialize inverted index for each letter
   const letterIndex = {};
   'abcdefghijklmnopqrstuvwxyz'.split('').forEach((letter) => {
-    letterIndex[letter] = new Set(); // Use a Set to avoid duplicates
+    letterIndex[letter] = {}; // Each letter maps to an object of words
   });
 
   // Process each document
@@ -115,7 +115,10 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
     tokens.forEach((word) => {
       const firstLetter = word.charAt(0); // Get the first letter of the word
       if (letterIndex[firstLetter]) {
-        letterIndex[firstLetter].add(id); // Add the document ID to the corresponding letter's Set
+        if (!letterIndex[firstLetter][word]) {
+          letterIndex[firstLetter][word] = new Set(); // Use a Set to avoid duplicates
+        }
+        letterIndex[firstLetter][word].add(id); // Add the document ID to the word's Set
       }
     });
   });
@@ -128,8 +131,14 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
   await Promise.all(
     Object.keys(letterIndex).map(async (letter) => {
       const filePath = path.join(searchIndexDir, `${letter}.json`);
-      const ids = Array.from(letterIndex[letter]); // Convert Set to Array for JSON serialization
-      await fs.writeFile(filePath, JSON.stringify(ids, null, 2));
+      const wordMap = {};
+
+      // Convert Sets to Arrays for JSON serialization
+      for (const word in letterIndex[letter]) {
+        wordMap[word] = Array.from(letterIndex[letter][word]);
+      }
+
+      await fs.writeFile(filePath, JSON.stringify(wordMap, null, 2));
       console.log(`Generated search index file: ${filePath}`);
     })
   );
