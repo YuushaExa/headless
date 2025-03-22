@@ -111,12 +111,9 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
     rangeIndexes[range.name] = {};
   });
 
-  // Metadata storage
-  const metadata = {};
-
+  // Process each document
   data.forEach((doc) => {
     const id = doc.id;
-    metadata[id] = doc;
 
     // Tokenize title and description
     const tokens = [...tokenize(doc.title || ''), ...tokenize(doc.description || '')];
@@ -124,10 +121,7 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
     tokens.forEach((word) => {
       const range = ranges.find((r) => r.test(word));
       if (range) {
-        if (!rangeIndexes[range.name]) {
-          rangeIndexes[range.name] = {}; // Ensure the range object exists
-        }
-        if (!rangeIndexes[range.name][word] || !(rangeIndexes[range.name][word] instanceof Set)) {
+        if (!rangeIndexes[range.name][word]) {
           rangeIndexes[range.name][word] = new Set(); // Initialize as a Set
         }
         rangeIndexes[range.name][word].add(id); // Add the document ID to the Set
@@ -146,19 +140,15 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
   const searchIndexDir = path.join(OUTPUT_DIR, this.basePath, 'search-index');
   await fs.mkdir(searchIndexDir, { recursive: true });
 
-  // Save each range index and metadata
-  await Promise.all([
-    ...ranges.map((range) =>
+  // Save each range index (without saving metadata)
+  await Promise.all(
+    ranges.map((range) =>
       fs.writeFile(
         path.join(searchIndexDir, `index-${range.name}.json`),
         JSON.stringify(rangeIndexes[range.name], null, 2)
       )
-    ),
-    fs.writeFile(
-      path.join(searchIndexDir, 'metadata.json'),
-      JSON.stringify(metadata, null, 2)
-    ),
-  ]);
+    )
+  );
 
   console.log(`Search index generated successfully for ${this.basePath}.`);
 },
