@@ -14,46 +14,37 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
       .filter((word) => word.length > 2); // Ignore short words
   }
 
-  // Define single-letter ranges
-  const ranges = 'abcdefghijklmnopqrstuvwxyz'.split('').map((letter) => ({
-    name: letter, // Single letter (e.g., 'a', 'b', 'c')
-    test: (word) => new RegExp(`^${letter}`).test(word), // Match words starting with this letter
-  }));
+  // Initialize inverted indexes for each two-letter prefix
+  const prefixIndexes = {};
 
-  // Initialize inverted indexes for each range
-  const rangeIndexes = {};
-  ranges.forEach((range) => {
-    rangeIndexes[range.name] = {};
-  });
-
-  // Metadata storage
-  const metadata = {};
-
+  // Process each document
   data.forEach((doc) => {
     const id = doc.id;
-    metadata[id] = doc;
 
     // Tokenize title and description
     const tokens = [...tokenize(doc.title || ''), ...tokenize(doc.description || '')];
 
+    // Ensure tokens is defined before using it
+    if (!Array.isArray(tokens)) {
+      throw new Error(`Invalid tokens generated for document ID: ${id}`);
+    }
+
     tokens.forEach((word) => {
-      const range = ranges.find((r) => r.test(word));
-      if (range) {
-        if (!rangeIndexes[range.name]) {
-          rangeIndexes[range.name] = {}; // Ensure the range object exists
-        }
-        if (!rangeIndexes[range.name][word] || !(rangeIndexes[range.name][word] instanceof Set)) {
-          rangeIndexes[range.name][word] = new Set(); // Initialize as a Set
-        }
-        rangeIndexes[range.name][word].add(id); // Add the document ID to the Set
+      const prefix = word.slice(0, 2); // Extract the first two letters, change to 3 for smaller file size 
+      if (!prefixIndexes[prefix]) {
+        prefixIndexes[prefix] = {}; // Initialize the prefix object
       }
+      if (!prefixIndexes[prefix][word] || !(prefixIndexes[prefix][word] instanceof Set)) {
+        prefixIndexes[prefix][word] = new Set(); // Ensure it's a Set
+      }
+      prefixIndexes[prefix][word].add(id); // Add the document ID to the Set
     });
   });
 
   // Convert Sets to Arrays for JSON serialization
-  for (const range of ranges) {
-    for (const word in rangeIndexes[range.name]) {
-      rangeIndexes[range.name][word] = Array.from(rangeIndexes[range.name][word]);
+  for (const prefix in prefixIndexes) {
+    for (const word in prefixIndexes[prefix]) {
+      prefixIndexes[prefix][word] = Array.from(prefixIndexes[prefix][word]);
     }
   }
 
@@ -61,20 +52,15 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
   const searchIndexDir = path.join(OUTPUT_DIR, this.basePath, 'search-index');
   await fs.mkdir(searchIndexDir, { recursive: true });
 
-  // Save each range index and metadata
-  await Promise.all([
-    ...ranges.map((range) =>
-      fs.writeFile(
-        path.join(searchIndexDir, `index-${range.name}.json`),
-        JSON.stringify(rangeIndexes[range.name], null, 2)
-      )
-    ),
-    fs.writeFile(
-      path.join(searchIndexDir, 'metadata.json'),
-      JSON.stringify(metadata, null, 2)
-    ),
-  ]);
-
+  // Save each prefix index as a separate file
+  await Promise.all(
+    Object.keys(prefixIndexes).map(async (prefix) => {
+      const filePath = path.join(searchIndexDir, `${prefix}.json`);
+      await fs.writeFile(filePath, JSON.stringify(prefixIndexes[prefix], null, 2));
+      console.log(`Generated search index file: ${filePath}`);
+    })
+  );
+  
   console.log(`Search index generated successfully for ${this.basePath}.`);
 },
 
