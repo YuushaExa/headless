@@ -87,87 +87,85 @@ module.exports = {
   },
 
   // Add search index generation logic
-  generateSearchIndex: async function (data, OUTPUT_DIR) {
-    const fs = require('fs').promises;
-    const path = require('path');
+generateSearchIndex: async function (data, OUTPUT_DIR) {
 
-    // Helper function to tokenize text
-    function tokenize(text) {
-      return text
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '') // Remove punctuation
-        .split(/\s+/) // Split by whitespace
-        .filter((word) => word.length > 2); // Ignore short words
-    }
-
-    // Define alphabetical ranges
-    const ranges = [
-      { name: 'a-c', test: (word) => /^[a-c]/.test(word) },
-      { name: 'd-f', test: (word) => /^[d-f]/.test(word) },
-      { name: 'g-i', test: (word) => /^[g-i]/.test(word) },
-      { name: 'j-l', test: (word) => /^[j-l]/.test(word) },
-      { name: 'm-o', test: (word) => /^[m-o]/.test(word) },
-      { name: 'p-s', test: (word) => /^[p-s]/.test(word) },
-      { name: 't-v', test: (word) => /^[t-v]/.test(word) },
-      { name: 'w-z', test: (word) => /^[w-z]/.test(word) },
-    ];
-
-    // Initialize inverted indexes for each range
-    const rangeIndexes = {};
-    ranges.forEach((range) => {
-      rangeIndexes[range.name] = {};
-    });
-
-    // Metadata storage
-    const metadata = {};
-
-    data.forEach((doc) => {
-      const id = doc.id;
-      metadata[id] = doc;
-
-      // Tokenize title and description
-      const tokens = [...tokenize(doc.title), ...tokenize(doc.description || '')];
-
-  tokens.forEach((word) => {
-  // Ensure the rangeIndexes structure is properly initialized
-  const range = ranges.find((r) => r.test(word));
-  if (range) {
-    if (!rangeIndexes[range.name]) {
-      rangeIndexes[range.name] = {}; // Ensure the range object exists
-    }
-    if (!rangeIndexes[range.name][word]) {
-      rangeIndexes[range.name][word] = new Set(); // Initialize as a Set
-    }
-    rangeIndexes[range.name][word].add(id); // Add the document ID to the Set
+  // Helper function to tokenize text
+  function tokenize(text) {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // Remove punctuation
+      .split(/\s+/) // Split by whitespace
+      .filter((word) => word.length > 2); // Ignore short words
   }
-});
-    });
 
-    // Convert Sets to Arrays for JSON serialization
-    for (const range of ranges) {
-      for (const word in rangeIndexes[range.name]) {
-        rangeIndexes[range.name][word] = Array.from(rangeIndexes[range.name][word]);
+  // Define alphabetical ranges
+  const ranges = [
+    { name: 'a-c', test: (word) => /^[a-c]/.test(word) },
+    { name: 'd-f', test: (word) => /^[d-f]/.test(word) },
+    { name: 'g-i', test: (word) => /^[g-i]/.test(word) },
+    { name: 'j-l', test: (word) => /^[j-l]/.test(word) },
+    { name: 'm-o', test: (word) => /^[m-o]/.test(word) },
+    { name: 'p-s', test: (word) => /^[p-s]/.test(word) },
+    { name: 't-v', test: (word) => /^[t-v]/.test(word) },
+    { name: 'w-z', test: (word) => /^[w-z]/.test(word) },
+  ];
+
+  // Initialize inverted indexes for each range
+  const rangeIndexes = {};
+  ranges.forEach((range) => {
+    rangeIndexes[range.name] = {};
+  });
+
+  // Metadata storage
+  const metadata = {};
+
+  data.forEach((doc) => {
+    const id = doc.id;
+    metadata[id] = doc;
+
+    // Tokenize title and description
+    const tokens = [...tokenize(doc.title), ...tokenize(doc.description || '')];
+
+    tokens.forEach((word) => {
+      // Ensure the rangeIndexes structure is properly initialized
+      const range = ranges.find((r) => r.test(word));
+      if (range) {
+        if (!rangeIndexes[range.name]) {
+          rangeIndexes[range.name] = {}; // Ensure the range object exists
+        }
+        if (!rangeIndexes[range.name][word]) {
+          rangeIndexes[range.name][word] = new Set(); // Initialize as a Set
+        }
+        rangeIndexes[range.name][word].add(id); // Add the document ID to the Set
       }
+    });
+  });
+
+  // Convert Sets to Arrays for JSON serialization
+  for (const range of ranges) {
+    for (const word in rangeIndexes[range.name]) {
+      rangeIndexes[range.name][word] = Array.from(rangeIndexes[range.name][word]);
     }
+  }
 
-    // Create a directory for the search index
-    const searchIndexDir = path.join(OUTPUT_DIR, this.basePath, 'search-index');
-    await fs.mkdir(searchIndexDir, { recursive: true });
+  // Create a directory for the search index
+  const searchIndexDir = path.join(OUTPUT_DIR, this.basePath, 'search-index');
+  await fs.mkdir(searchIndexDir, { recursive: true });
 
-    // Save each range index and metadata
-    await Promise.all([
-      ...ranges.map((range) =>
-        fs.writeFile(
-          path.join(searchIndexDir, `index-${range.name}.json`),
-          JSON.stringify(rangeIndexes[range.name], null, 2)
-        )
-      ),
+  // Save each range index and metadata
+  await Promise.all([
+    ...ranges.map((range) =>
       fs.writeFile(
-        path.join(searchIndexDir, 'metadata.json'),
-        JSON.stringify(metadata, null, 2)
-      ),
-    ]);
+        path.join(searchIndexDir, `index-${range.name}.json`),
+        JSON.stringify(rangeIndexes[range.name], null, 2)
+      )
+    ),
+    fs.writeFile(
+      path.join(searchIndexDir, 'metadata.json'),
+      JSON.stringify(metadata, null, 2)
+    ),
+  ]);
 
-    console.log(`Search index generated successfully for ${this.basePath}.`);
-  },
+  console.log(`Search index generated successfully for ${this.basePath}.`);
+},
 };
