@@ -112,10 +112,6 @@ async function main() {
         await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
       }
 
-      // Generate search index for this template
-      if (template.generateSearchIndex) {
-        await template.generateSearchIndex(data, OUTPUT_DIR);
-      }
     }
 
     console.timeEnd('File generation time');
