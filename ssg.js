@@ -76,83 +76,6 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
   );
 }
 
-// Helper function to tokenize text
-function tokenize(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '') // Remove punctuation
-    .split(/\s+/) // Split by whitespace
-    .filter((word) => word.length > 2); // Ignore short words
-}
-
-// Define alphabetical ranges
-const ranges = [
-  { name: 'a-c', test: (word) => /^[a-c]/.test(word) },
-  { name: 'd-f', test: (word) => /^[d-f]/.test(word) },
-  { name: 'g-i', test: (word) => /^[g-i]/.test(word) },
-  { name: 'j-l', test: (word) => /^[j-l]/.test(word) },
-  { name: 'm-o', test: (word) => /^[m-o]/.test(word) },
-  { name: 'p-s', test: (word) => /^[p-s]/.test(word) },
-  { name: 't-v', test: (word) => /^[t-v]/.test(word) },
-  { name: 'w-z', test: (word) => /^[w-z]/.test(word) }
-];
-
-// Function to generate a single search index for the full VN dataset
-// Function to generate a single search index for the full VN dataset
-async function generateSearchIndexes(data, basePath) {
-  // Initialize inverted indexes for each range
-  const rangeIndexes = {};
-  ranges.forEach((range) => {
-    rangeIndexes[range.name] = {};
-  });
-
-  // Metadata storage
-  const metadata = {};
-
-  data.forEach((doc) => {
-    const id = doc.id;
-    metadata[id] = doc;
-
-    // Tokenize title and description
-    const tokens = [...tokenize(doc.title), ...tokenize(doc.description || '')];
-
-    tokens.forEach((word) => {
-      // Add word to the appropriate range index
-      const range = ranges.find((r) => r.test(word));
-      if (range) {
-        // Initialize as a Set if it doesn't exist
-        if (!rangeIndexes[range.name][word]) {
-          rangeIndexes[range.name][word] = new Set();
-        }
-        // Add the document ID to the Set
-        rangeIndexes[range.name][word].add(id);
-      }
-    });
-  });
-
-  // Convert Sets to Arrays for JSON serialization
-  for (const range of ranges) {
-    for (const word in rangeIndexes[range.name]) {
-      rangeIndexes[range.name][word] = Array.from(rangeIndexes[range.name][word]);
-    }
-  }
-
-  // Create a directory for the full VN search index
-  const searchIndexDir = path.join(OUTPUT_DIR, basePath, 'search-index');
-  await fs.mkdir(searchIndexDir, { recursive: true });
-
-  // Save each range index and metadata
-  await Promise.all([
-    ...ranges.map((range) =>
-      writeJsonFile(path.join(searchIndexDir, `index-${range.name}.json`), rangeIndexes[range.name])
-    ),
-    writeJsonFile(path.join(searchIndexDir, 'metadata.json'), metadata),
-  ]);
-
-  console.log(`Full VN search index and metadata built successfully for ${basePath}.`);
-}
-
-// Main function
 // Main function
 async function main() {
   try {
@@ -189,8 +112,10 @@ async function main() {
         await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
       }
 
-      // Generate a single search index for the full VN dataset
-      await generateSearchIndexes(data, template.basePath);
+      // Generate search index for this template
+      if (template.generateSearchIndex) {
+        await template.generateSearchIndex(data, OUTPUT_DIR);
+      }
     }
 
     console.timeEnd('File generation time');
