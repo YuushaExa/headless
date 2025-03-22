@@ -76,6 +76,7 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
 }
 
 // Main function
+// Main function
 async function main() {
   try {
     console.time('File generation time');
@@ -109,6 +110,9 @@ async function main() {
       if (template.generateRelatedEntities) {
         await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
       }
+
+      // Generate search indexes
+      await generateSearchIndexes(data);
     }
 
     console.timeEnd('File generation time');
@@ -117,6 +121,70 @@ async function main() {
     console.error('Error:', error.message);
     process.exit(1);
   }
+}
+
+// Helper function to tokenize text
+function tokenize(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '') // Remove punctuation
+    .split(/\s+/) // Split by whitespace
+    .filter((word) => word.length > 2); // Ignore short words
+}
+
+// Define alphabetical ranges
+const ranges = [
+  { name: 'a-c', test: (word) => /^[a-c]/.test(word) },
+  { name: 'd-f', test: (word) => /^[d-f]/.test(word) },
+  { name: 'g-i', test: (word) => /^[g-i]/.test(word) },
+  { name: 'j-l', test: (word) => /^[j-l]/.test(word) },
+  { name: 'm-o', test: (word) => /^[m-o]/.test(word) },
+  { name: 'p-s', test: (word) => /^[p-s]/.test(word) },
+  { name: 't-v', test: (word) => /^[t-v]/.test(word) },
+  { name: 'w-z', test: (word) => /^[w-z]/.test(word) }
+];
+
+// Function to generate search indexes
+async function generateSearchIndexes(data) {
+  // Initialize inverted indexes for each range
+  const rangeIndexes = {};
+  ranges.forEach((range) => {
+    rangeIndexes[range.name] = {};
+  });
+
+  // Metadata storage
+  const metadata = {};
+
+  data.forEach((doc) => {
+    const id = doc.id;
+    metadata[id] = doc;
+
+    // Tokenize title and description
+    const tokens = [...tokenize(doc.title), ...tokenize(doc.description || '')];
+
+    tokens.forEach((word) => {
+      // Add word to the appropriate range index
+      const range = ranges.find((r) => r.test(word));
+      if (range) {
+        if (!rangeIndexes[range.name][word]) {
+          rangeIndexes[range.name][word] = [];
+        }
+        if (!rangeIndexes[range.name][word].includes(id)) {
+          rangeIndexes[range.name][word].push(id);
+        }
+      }
+    });
+  });
+
+  // Save each range index and metadata
+  await Promise.all([
+    ...ranges.map((range) => 
+      writeJsonFile(path.join(OUTPUT_DIR, `index-${range.name}.json`), rangeIndexes[range.name])
+    ),
+    writeJsonFile(path.join(OUTPUT_DIR, 'metadata.json'), metadata)
+  ]);
+
+  console.log('Split inverted indexes and metadata built successfully.');
 }
 
 // Run the script
