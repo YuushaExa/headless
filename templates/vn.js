@@ -100,17 +100,11 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
       .filter((word) => word.length > 2); // Ignore short words
   }
 
-  // Define alphabetical ranges
-  const ranges = [
-    { name: 'a-c', test: (word) => /^[a-c]/.test(word) },
-    { name: 'd-f', test: (word) => /^[d-f]/.test(word) },
-    { name: 'g-i', test: (word) => /^[g-i]/.test(word) },
-    { name: 'j-l', test: (word) => /^[j-l]/.test(word) },
-    { name: 'm-o', test: (word) => /^[m-o]/.test(word) },
-    { name: 'p-s', test: (word) => /^[p-s]/.test(word) },
-    { name: 't-v', test: (word) => /^[t-v]/.test(word) },
-    { name: 'w-z', test: (word) => /^[w-z]/.test(word) },
-  ];
+  // Define single-letter ranges
+  const ranges = 'abcdefghijklmnopqrstuvwxyz'.split('').map((letter) => ({
+    name: letter, // Single letter (e.g., 'a', 'b', 'c')
+    test: (word) => new RegExp(`^${letter}`).test(word), // Match words starting with this letter
+  }));
 
   // Initialize inverted indexes for each range
   const rangeIndexes = {};
