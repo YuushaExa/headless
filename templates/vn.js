@@ -103,23 +103,17 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
   const prefixIndexes = {};
 
   // Process each document
-  data.forEach((doc) => {
-    const id = doc.id;
-
-    // Tokenize title and description
-    const tokens = [...tokenize(doc.title || ''), ...tokenize(doc.description || '')];
-
-    tokens.forEach((word) => {
-      const prefix = word.slice(0, 2); // Extract the first two letters
-      if (!prefixIndexes[prefix]) {
-        prefixIndexes[prefix] = {}; // Initialize the prefix object
-      }
-      if (!prefixIndexes[prefix][word]) {
-        prefixIndexes[prefix][word] = new Set(); // Initialize as a Set
-      }
-      prefixIndexes[prefix][word].add(id); // Add the document ID to the Set
-    });
-  });
+tokens.forEach((word) => {
+  const prefix = word.slice(0, 2);
+  if (!prefixIndexes[prefix]) {
+    prefixIndexes[prefix] = {};
+  }
+  if (!prefixIndexes[prefix][word]) {
+    prefixIndexes[prefix][word] = new Set();
+  }
+  console.log(`Type of prefixIndexes[${prefix}][${word}]:`, typeof prefixIndexes[prefix][word]);
+  prefixIndexes[prefix][word].add(id);
+});
 
   // Convert Sets to Arrays for JSON serialization
   for (const prefix in prefixIndexes) {
