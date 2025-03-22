@@ -6,7 +6,7 @@ const https = require('https');
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 const TEMPLATES_DIR = path.join(__dirname, 'templates'); // Use absolute path
- 
+
 // Track total number of generated files
 let totalFilesGenerated = 0;
 
@@ -58,6 +58,7 @@ async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, p
   const paginatedItems = paginateItems(items, pageSize);
   await generatePaginatedIndex(paginatedItems, baseDir, pageMapper);
 }
+
 // Generate paginated index files
 async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
   const pageDir = path.join(baseDir, 'page');
@@ -75,7 +76,79 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
   );
 }
 
-// Main function
+// Helper function to tokenize text
+function tokenize(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '') // Remove punctuation
+    .split(/\s+/) // Split by whitespace
+    .filter((word) => word.length > 2); // Ignore short words
+}
+
+// Define alphabetical ranges
+const ranges = [
+  { name: 'a-c', test: (word) => /^[a-c]/.test(word) },
+  { name: 'd-f', test: (word) => /^[d-f]/.test(word) },
+  { name: 'g-i', test: (word) => /^[g-i]/.test(word) },
+  { name: 'j-l', test: (word) => /^[j-l]/.test(word) },
+  { name: 'm-o', test: (word) => /^[m-o]/.test(word) },
+  { name: 'p-s', test: (word) => /^[p-s]/.test(word) },
+  { name: 't-v', test: (word) => /^[t-v]/.test(word) },
+  { name: 'w-z', test: (word) => /^[w-z]/.test(word) }
+];
+
+// Function to generate a single search index for the full VN dataset
+async function generateSearchIndexes(data, basePath) {
+  // Initialize inverted indexes for each range
+  const rangeIndexes = {};
+  ranges.forEach((range) => {
+    rangeIndexes[range.name] = {};
+  });
+
+  // Metadata storage
+  const metadata = {};
+
+  data.forEach((doc) => {
+    const id = doc.id;
+    metadata[id] = doc;
+
+    // Tokenize title and description
+    const tokens = [...tokenize(doc.title), ...tokenize(doc.description || '')];
+
+    tokens.forEach((word) => {
+      // Add word to the appropriate range index
+      const range = ranges.find((r) => r.test(word));
+      if (range) {
+        if (!rangeIndexes[range.name][word]) {
+          rangeIndexes[range.name][word] = new Set(); // Use a Set to ensure uniqueness
+        }
+        rangeIndexes[range.name][word].add(id); // Add the document ID to the Set
+      }
+    });
+  });
+
+  // Convert Sets to Arrays for JSON serialization
+  for (const range of ranges) {
+    for (const word in rangeIndexes[range.name]) {
+      rangeIndexes[range.name][word] = Array.from(rangeIndexes[range.name][word]);
+    }
+  }
+
+  // Create a directory for the full VN search index
+  const searchIndexDir = path.join(OUTPUT_DIR, basePath, 'search-index');
+  await fs.mkdir(searchIndexDir, { recursive: true });
+
+  // Save each range index and metadata
+  await Promise.all([
+    ...ranges.map((range) =>
+      writeJsonFile(path.join(searchIndexDir, `index-${range.name}.json`), rangeIndexes[range.name])
+    ),
+    writeJsonFile(path.join(searchIndexDir, 'metadata.json'), metadata),
+  ]);
+
+  console.log(`Full VN search index and metadata built successfully for ${basePath}.`);
+}
+
 // Main function
 async function main() {
   try {
@@ -83,6 +156,7 @@ async function main() {
 
     // Load templates
     const templates = await fs.readdir(TEMPLATES_DIR);
+
     for (const templateFile of templates) {
       const templatePath = path.join(TEMPLATES_DIR, templateFile);
       console.log(`Loading template: ${templatePath}`);
@@ -111,8 +185,8 @@ async function main() {
         await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
       }
 
-      // Generate search indexes
-      await generateSearchIndexes(data);
+      // Generate a single search index for the full VN dataset
+      await generateSearchIndexes(data, template.basePath);
     }
 
     console.timeEnd('File generation time');
@@ -121,70 +195,6 @@ async function main() {
     console.error('Error:', error.message);
     process.exit(1);
   }
-}
-
-// Helper function to tokenize text
-function tokenize(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '') // Remove punctuation
-    .split(/\s+/) // Split by whitespace
-    .filter((word) => word.length > 2); // Ignore short words
-}
-
-// Define alphabetical ranges
-const ranges = [
-  { name: 'a-c', test: (word) => /^[a-c]/.test(word) },
-  { name: 'd-f', test: (word) => /^[d-f]/.test(word) },
-  { name: 'g-i', test: (word) => /^[g-i]/.test(word) },
-  { name: 'j-l', test: (word) => /^[j-l]/.test(word) },
-  { name: 'm-o', test: (word) => /^[m-o]/.test(word) },
-  { name: 'p-s', test: (word) => /^[p-s]/.test(word) },
-  { name: 't-v', test: (word) => /^[t-v]/.test(word) },
-  { name: 'w-z', test: (word) => /^[w-z]/.test(word) }
-];
-
-// Function to generate search indexes
-async function generateSearchIndexes(data) {
-  // Initialize inverted indexes for each range
-  const rangeIndexes = {};
-  ranges.forEach((range) => {
-    rangeIndexes[range.name] = {};
-  });
-
-  // Metadata storage
-  const metadata = {};
-
-  data.forEach((doc) => {
-    const id = doc.id;
-    metadata[id] = doc;
-
-    // Tokenize title and description
-    const tokens = [...tokenize(doc.title), ...tokenize(doc.description || '')];
-
-    tokens.forEach((word) => {
-      // Add word to the appropriate range index
-      const range = ranges.find((r) => r.test(word));
-      if (range) {
-        if (!rangeIndexes[range.name][word]) {
-          rangeIndexes[range.name][word] = [];
-        }
-        if (!rangeIndexes[range.name][word].includes(id)) {
-          rangeIndexes[range.name][word].push(id);
-        }
-      }
-    });
-  });
-
-  // Save each range index and metadata
-  await Promise.all([
-    ...ranges.map((range) => 
-      writeJsonFile(path.join(OUTPUT_DIR, `index-${range.name}.json`), rangeIndexes[range.name])
-    ),
-    writeJsonFile(path.join(OUTPUT_DIR, 'metadata.json'), metadata)
-  ]);
-
-  console.log('Split inverted indexes and metadata built successfully.');
 }
 
 // Run the script
