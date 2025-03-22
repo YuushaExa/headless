@@ -128,16 +128,19 @@ module.exports = {
       // Tokenize title and description
       const tokens = [...tokenize(doc.title), ...tokenize(doc.description || '')];
 
-      tokens.forEach((word) => {
-        // Add word to the appropriate range index
-        const range = ranges.find((r) => r.test(word));
-        if (range) {
-          if (!rangeIndexes[range.name][word]) {
-            rangeIndexes[range.name][word] = new Set(); // Use a Set to ensure uniqueness
-          }
-          rangeIndexes[range.name][word].add(id); // Add the document ID to the Set
-        }
-      });
+  tokens.forEach((word) => {
+  // Ensure the rangeIndexes structure is properly initialized
+  const range = ranges.find((r) => r.test(word));
+  if (range) {
+    if (!rangeIndexes[range.name]) {
+      rangeIndexes[range.name] = {}; // Ensure the range object exists
+    }
+    if (!rangeIndexes[range.name][word]) {
+      rangeIndexes[range.name][word] = new Set(); // Initialize as a Set
+    }
+    rangeIndexes[range.name][word].add(id); // Add the document ID to the Set
+  }
+});
     });
 
     // Convert Sets to Arrays for JSON serialization
