@@ -98,6 +98,7 @@ const ranges = [
 ];
 
 // Function to generate a single search index for the full VN dataset
+// Function to generate a single search index for the full VN dataset
 async function generateSearchIndexes(data, basePath) {
   // Initialize inverted indexes for each range
   const rangeIndexes = {};
@@ -119,10 +120,12 @@ async function generateSearchIndexes(data, basePath) {
       // Add word to the appropriate range index
       const range = ranges.find((r) => r.test(word));
       if (range) {
+        // Initialize as a Set if it doesn't exist
         if (!rangeIndexes[range.name][word]) {
-          rangeIndexes[range.name][word] = new Set(); // Use a Set to ensure uniqueness
+          rangeIndexes[range.name][word] = new Set();
         }
-        rangeIndexes[range.name][word].add(id); // Add the document ID to the Set
+        // Add the document ID to the Set
+        rangeIndexes[range.name][word].add(id);
       }
     });
   });
@@ -149,6 +152,7 @@ async function generateSearchIndexes(data, basePath) {
   console.log(`Full VN search index and metadata built successfully for ${basePath}.`);
 }
 
+// Main function
 // Main function
 async function main() {
   try {
