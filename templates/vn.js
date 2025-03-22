@@ -86,4 +86,55 @@ module.exports = {
     });
   },
 
+generateSearchIndex: async function (data, OUTPUT_DIR) {
+  const fs = require('fs').promises;
+  const path = require('path');
+
+  // Helper function to tokenize text
+  function tokenize(text) {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // Remove punctuation
+      .split(/\s+/) // Split by whitespace
+      .filter((word) => word.length > 2); // Ignore short words
+  }
+
+  // Initialize inverted index for each letter
+  const letterIndex = {};
+  'abcdefghijklmnopqrstuvwxyz'.split('').forEach((letter) => {
+    letterIndex[letter] = new Set(); // Use a Set to avoid duplicates
+  });
+
+  // Process each document
+  data.forEach((doc) => {
+    const id = doc.id;
+
+    // Tokenize title and description
+    const tokens = [...tokenize(doc.title || ''), ...tokenize(doc.description || '')];
+
+    tokens.forEach((word) => {
+      const firstLetter = word.charAt(0); // Get the first letter of the word
+      if (letterIndex[firstLetter]) {
+        letterIndex[firstLetter].add(id); // Add the document ID to the corresponding letter's Set
+      }
+    });
+  });
+
+  // Create a directory for the search index
+  const searchIndexDir = path.join(OUTPUT_DIR, this.basePath, 'search-index');
+  await fs.mkdir(searchIndexDir, { recursive: true });
+
+  // Save each letter's index as a separate file
+  await Promise.all(
+    Object.keys(letterIndex).map(async (letter) => {
+      const filePath = path.join(searchIndexDir, `${letter}.json`);
+      const ids = Array.from(letterIndex[letter]); // Convert Set to Array for JSON serialization
+      await fs.writeFile(filePath, JSON.stringify(ids, null, 2));
+      console.log(`Generated search index file: ${filePath}`);
+    })
+  );
+
+  console.log(`Search index generated successfully for ${this.basePath}.`);
+},
+  
 };
