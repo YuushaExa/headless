@@ -111,9 +111,9 @@ async function main() {
       if (template.generateRelatedEntities) {
         await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
       }
-   if (template.generateSearchIndex) {
-        await template.generateSearchIndex(data, OUTPUT_DIR);
-      }
+  if (template.generateSearchIndex) {
+  await template.generateSearchIndex(data, OUTPUT_DIR, { value: totalFilesGenerated });
+}
 
       
     }
