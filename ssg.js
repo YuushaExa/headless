@@ -37,7 +37,7 @@ function paginateItems(items, pageSize) {
 }
 
 // Generate paginated files for a given type
-async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, pageMapper, fileNameGenerator = (item) => `${item.id}.json` }) {
+async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, pageMapper, fileNameGenerator = (item) => `${item.id}.json`, typeName = 'items' }) {
   const baseDir = path.join(OUTPUT_DIR, basePath);
   await fs.mkdir(baseDir, { recursive: true });
 
@@ -48,19 +48,22 @@ async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, p
       await writeJsonFile(filePath, itemMapper(item));
 
       totalFilesGenerated++;
-      if (index < 3) { // Log only the first 3 files
-        console.log(`Generated item file: ${filePath}`);
+      if (index < 3) {
+        console.log(`Generated ${typeName} file: ${filePath}`);
       }
     })
   );
 
+  // Log total item files generated
+  console.log(`Generated ${items.length} ${typeName} files in total.`);
+
   // Paginate items and generate index files
   const paginatedItems = paginateItems(items, pageSize);
-  await generatePaginatedIndex(paginatedItems, baseDir, pageMapper);
+  await generatePaginatedIndex(paginatedItems, baseDir, pageMapper, typeName);
 }
 
-// Generate paginated index files
-async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
+// Modify the generatePaginatedIndex function
+async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper, typeName = 'items') {
   const pageDir = path.join(baseDir, 'page');
   await fs.mkdir(pageDir, { recursive: true });
 
@@ -74,6 +77,9 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
       if (index < 3) console.log(`Generated paginated file: ${filePath}`);
     })
   );
+
+  // Log total pagination files generated
+  console.log(`Generated ${paginatedItems.length} ${typeName} pagination files in total.\n`);
 }
 
 // Main function
@@ -99,13 +105,14 @@ async function main() {
       }
 
       // Generate paginated files for the main items (posts)
-      await generatePaginatedFiles({
-        items: data,
-        pageSize: POSTS_PER_PAGE,
-        basePath: template.basePath, // `vn/posts`
-        itemMapper: template.itemMapper,
-        pageMapper: template.pageMapper,
-      });
+await generatePaginatedFiles({
+  items: data,
+  pageSize: POSTS_PER_PAGE,
+  basePath: template.basePath,
+  itemMapper: template.itemMapper,
+  pageMapper: template.pageMapper,
+  typeName: 'post'
+});
 
       // Generate related entities (developers)
       if (template.generateRelatedEntities) {
