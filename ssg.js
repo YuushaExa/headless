@@ -5,13 +5,37 @@ const https = require('https');
 // Constants
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
-const TEMPLATES_DIR = path.join(__dirname, 'templates'); // Use absolute path
+const TEMPLATES_DIR = path.join(__dirname, 'templates');
+const FILE_CONCURRENCY_LIMIT = 20; // Safe number of concurrent file operations
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
 
-// Utility function to write JSON files with consistent formatting
+// Concurrency control helper
+async function processWithConcurrency(items, concurrencyLimit, processorFn) {
+  const results = [];
+  const activeTasks = [];
+  
+  for (const item of items) {
+    if (activeTasks.length >= concurrencyLimit) {
+      await Promise.race(activeTasks);
+    }
+
+    const task = Promise.resolve().then(() => processorFn(item));
+    activeTasks.push(task);
+    task.then(() => {
+      activeTasks.splice(activeTasks.indexOf(task), 1);
+      return null;
+    });
+    results.push(task);
+  }
+
+  return Promise.all(results);
+}
+
+// Utility function to write JSON files
 async function writeJsonFile(filePath, data) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, JSON.stringify(data, null, 2));
 }
 
@@ -19,7 +43,9 @@ async function writeJsonFile(filePath, data) {
 async function fetchData(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
-      if (res.statusCode !== 200) reject(new Error(`Failed to fetch data. Status code: ${res.statusCode}`));
+      if (res.statusCode !== 200) {
+        reject(new Error(`Failed to fetch data. Status code: ${res.statusCode}`));
+      }
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => resolve(JSON.parse(data)));
@@ -36,44 +62,48 @@ function paginateItems(items, pageSize) {
   return pages;
 }
 
-// Generate paginated files for a given type
-async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, pageMapper, fileNameGenerator = (item) => `${item.id}.json` }) {
-  const baseDir = path.join(OUTPUT_DIR, basePath);
-  await fs.mkdir(baseDir, { recursive: true });
-
-  // Generate individual item files
-  await Promise.all(
-    items.map(async (item, index) => {
-      const filePath = path.join(baseDir, fileNameGenerator(item));
-      await writeJsonFile(filePath, itemMapper(item));
-
-      totalFilesGenerated++;
-      if (index < 3) { // Log only the first 3 files
-        console.log(`Generated item file: ${filePath}`);
-      }
-    })
-  );
-
-  // Paginate items and generate index files
-  const paginatedItems = paginateItems(items, pageSize);
-  await generatePaginatedIndex(paginatedItems, baseDir, pageMapper);
-}
-
 // Generate paginated index files
 async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
   const pageDir = path.join(baseDir, 'page');
   await fs.mkdir(pageDir, { recursive: true });
 
-  await Promise.all(
-    paginatedItems.map(async (page, index) => {
+  await processWithConcurrency(
+    paginatedItems.map((page, index) => ({ page, index })),
+    FILE_CONCURRENCY_LIMIT,
+    async ({ page, index }) => {
       const pageNumber = index + 1;
-      const filePath = pageNumber === 1 ? path.join(baseDir, 'index.json') : path.join(pageDir, `${pageNumber}.json`);
+      const filePath = pageNumber === 1 
+        ? path.join(baseDir, 'index.json')
+        : path.join(pageDir, `${pageNumber}.json`);
       await writeJsonFile(filePath, pageMapper(page, pageNumber, paginatedItems.length));
-
       totalFilesGenerated++;
       if (index < 3) console.log(`Generated paginated file: ${filePath}`);
-    })
+    }
   );
+}
+
+// Generate paginated files for a given type
+async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, pageMapper, fileNameGenerator = (item) => `${item.id}.json` }) {
+  const baseDir = path.join(OUTPUT_DIR, basePath);
+  await fs.mkdir(baseDir, { recursive: true });
+
+  // Generate individual item files with concurrency control
+  await processWithConcurrency(
+    items,
+    FILE_CONCURRENCY_LIMIT,
+    async (item) => {
+      const filePath = path.join(baseDir, fileNameGenerator(item));
+      await writeJsonFile(filePath, itemMapper(item));
+      totalFilesGenerated++;
+      if (totalFilesGenerated <= 3) {
+        console.log(`Generated item file: ${filePath}`);
+      }
+    }
+  );
+
+  // Paginate items and generate index files
+  const paginatedItems = paginateItems(items, pageSize);
+  await generatePaginatedIndex(paginatedItems, baseDir, pageMapper);
 }
 
 // Main function
@@ -136,5 +166,6 @@ async function main() {
     process.exit(1);
   }
 }
+
 // Run the script
 main();
