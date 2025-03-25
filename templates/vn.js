@@ -137,16 +137,25 @@ generateSearchIndex: async function (data, OUTPUT_DIR) {
   const searchIndexDir = path.join(OUTPUT_DIR, this.basePath, 'search-index');
   await fs.mkdir(searchIndexDir, { recursive: true });
 
+  // Get all prefixes and sort them for consistent logging
+  const prefixes = Object.keys(prefixIndexes).sort();
+  const prefixCount = prefixes.length;
+
   // Save each prefix index as a separate file
   await Promise.all(
-    Object.keys(prefixIndexes).map(async (prefix) => {
+    prefixes.map(async (prefix, index) => {
       const filePath = path.join(searchIndexDir, `${prefix}.json`);
       await fs.writeFile(filePath, JSON.stringify(prefixIndexes[prefix], null, 2));
-      console.log(`Generated search index file: ${filePath}`);
+      
+      totalFilesGenerated++;
+      if (index < 3) { // Log only the first 3 files
+        console.log(`Generated search index file: ${filePath}`);
+      }
     })
   );
   
   console.log(`Search index generated successfully for ${this.basePath}.`);
+  console.log(`Generated ${prefixCount} search index files in total.`);
 },
   
 };
