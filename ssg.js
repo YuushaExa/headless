@@ -6,7 +6,7 @@ const https = require('https');
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
-const MAX_CONCURRENT_WRITES = 500;
+const MAX_CONCURRENT_WRITES = 2000;
 const SEARCH_INDEX_PREFIX_LENGTH = 3;
 
 // Track total number of generated files
