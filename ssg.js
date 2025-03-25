@@ -7,7 +7,7 @@ const { promisify } = require('util');
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
-const MAX_CONCURRENT_WRITES = 100; // Limit concurrent file writes
+const MAX_CONCURRENT_WRITES = 500; // Limit concurrent file writes
 const SEARCH_INDEX_PREFIX_LENGTH = 3;
 
 // Track total number of generated files
