@@ -1,19 +1,18 @@
 const fs = require('fs').promises;
 const path = require('path');
 const https = require('https');
-const { promisify } = require('util');
 
 // Constants
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
-const MAX_CONCURRENT_WRITES = 500; // Limit concurrent file writes
+const MAX_CONCURRENT_WRITES = 500;
 const SEARCH_INDEX_PREFIX_LENGTH = 3;
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
 
-// Create a simple queue system for file writes
+// Write queue for limiting concurrent file operations
 class WriteQueue {
   constructor(maxConcurrent) {
     this.maxConcurrent = maxConcurrent;
@@ -46,7 +45,7 @@ class WriteQueue {
 
 const writeQueue = new WriteQueue(MAX_CONCURRENT_WRITES);
 
-// Utility function to write JSON files with consistent formatting
+// Utility function to write JSON files
 async function writeJsonFile(filePath, data) {
   await writeQueue.enqueue(() => 
     fs.writeFile(filePath, JSON.stringify(data, null, 2))
@@ -101,7 +100,7 @@ async function fetchData(url, retries = 3, timeout = 5000) {
   });
 }
 
-// Optimized paginateItems with pre-allocation
+// Optimized pagination
 function paginateItems(items, pageSize) {
   const pageCount = Math.ceil(items.length / pageSize);
   const pages = new Array(pageCount);
@@ -113,7 +112,7 @@ function paginateItems(items, pageSize) {
   return pages;
 }
 
-// Batch processing for large datasets
+// Batch processing helper
 async function processInBatches(items, batchSize, processFn) {
   const batches = Math.ceil(items.length / batchSize);
   for (let i = 0; i < batches; i++) {
@@ -122,12 +121,30 @@ async function processInBatches(items, batchSize, processFn) {
   }
 }
 
-// Generate paginated files with batch processing
+// Generate paginated index files (MISSING FUNCTION ADDED HERE)
+async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
+  const pageDir = path.join(baseDir, 'page');
+  await fs.mkdir(pageDir, { recursive: true });
+
+  await processInBatches(paginatedItems, 50, async (page, index) => {
+    const pageNumber = index + 1;
+    const filePath = pageNumber === 1 
+      ? path.join(baseDir, 'index.json') 
+      : path.join(pageDir, `${pageNumber}.json`);
+    
+    await writeJsonFile(filePath, pageMapper(page, pageNumber, paginatedItems.length));
+    
+    totalFilesGenerated++;
+    if (index < 3) console.log(`Generated paginated file: ${filePath}`);
+  });
+}
+
+// Main paginated file generator
 async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, pageMapper, fileNameGenerator = (item) => `${item.id}.json` }) {
   const baseDir = path.join(OUTPUT_DIR, basePath);
   await fs.mkdir(baseDir, { recursive: true });
 
-  // Process items in batches to avoid memory overload
+  // Generate individual item files
   await processInBatches(items, 100, async (item, index) => {
     const filePath = path.join(baseDir, fileNameGenerator(item));
     await writeJsonFile(filePath, itemMapper(item));
@@ -138,17 +155,25 @@ async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, p
     }
   });
 
-  // Paginate items and generate index files
+  // Generate paginated index files
   const paginatedItems = paginateItems(items, pageSize);
   await generatePaginatedIndex(paginatedItems, baseDir, pageMapper);
 }
 
-// Optimized search index generation
+// Tokenizer for search index
+function tokenize(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter((word) => word.length > 2);
+}
+
+// Optimized search index generator
 async function generateSearchIndex(data, OUTPUT_DIR, basePath) {
-  // Use a Map for better performance with large datasets
   const prefixIndexes = new Map();
 
-  // Process documents in batches
+  // Process in batches
   for (let i = 0; i < data.length; i += 1000) {
     const batch = data.slice(i, i + 1000);
     
@@ -180,7 +205,7 @@ async function generateSearchIndex(data, OUTPUT_DIR, basePath) {
   const searchIndexDir = path.join(OUTPUT_DIR, basePath, 'search-index');
   await fs.mkdir(searchIndexDir, { recursive: true });
 
-  // Convert Maps to objects for JSON serialization and write files
+  // Write index files
   const writePromises = [];
   for (const [prefix, wordMap] of prefixIndexes) {
     const indexObj = {};
@@ -198,13 +223,12 @@ async function generateSearchIndex(data, OUTPUT_DIR, basePath) {
   await Promise.all(writePromises);
 }
 
-// Main function with error handling and cleanup
+// Main function
 async function main() {
   try {
     console.time('File generation time');
     const templates = await fs.readdir(TEMPLATES_DIR);
 
-    // Process templates sequentially to avoid memory spikes
     for (const templateFile of templates) {
       const templatePath = path.join(TEMPLATES_DIR, templateFile);
       console.log(`Processing template: ${templatePath}`);
@@ -231,12 +255,12 @@ async function main() {
         pageMapper: template.pageMapper,
       });
 
-      // Process related entities if they exist
+      // Process related entities
       if (template.generateRelatedEntities) {
         await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
       }
 
-      // Generate search index if configured
+      // Generate search index
       if (template.generateSearchIndex) {
         await generateSearchIndex(data, OUTPUT_DIR, template.basePath);
       }
