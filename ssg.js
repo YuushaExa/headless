@@ -80,11 +80,10 @@ async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper) {
 async function main() {
   try {
     console.time('File generation time');
-
-    // Load templates
     const templates = await fs.readdir(TEMPLATES_DIR);
 
-    for (const templateFile of templates) {
+    // Process all templates concurrently
+    await Promise.all(templates.map(async (templateFile) => {
       const templatePath = path.join(TEMPLATES_DIR, templateFile);
       console.log(`Loading template: ${templatePath}`);
       const template = require(templatePath);
@@ -95,28 +94,40 @@ async function main() {
       if (!Array.isArray(data)) throw new Error(`Fetched data for ${template.basePath} is not an array.`);
       if (data.length === 0) {
         console.warn(`Warning: No data found for ${template.basePath}. Skipping.`);
-        continue;
+        return;
       }
 
-      // Generate paginated files for the main items (posts)
-      await generatePaginatedFiles({
-        items: data,
-        pageSize: POSTS_PER_PAGE,
-        basePath: template.basePath, // `vn/posts`
-        itemMapper: template.itemMapper,
-        pageMapper: template.pageMapper,
-      });
+      // Create an array of all generation tasks for this template
+      const generationTasks = [];
 
-      // Generate related entities (developers)
+      // 1. Main posts generation
+      generationTasks.push(
+        generatePaginatedFiles({
+          items: data,
+          pageSize: POSTS_PER_PAGE,
+          basePath: template.basePath,
+          itemMapper: template.itemMapper,
+          pageMapper: template.pageMapper,
+        })
+      );
+
+      // 2. Related entities generation (if exists)
       if (template.generateRelatedEntities) {
-        await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
-      }
-   if (template.generateSearchIndex) {
-        await template.generateSearchIndex(data, OUTPUT_DIR);
+        generationTasks.push(
+          template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE)
+        );
       }
 
-      
-    }
+      // 3. Search index generation (if exists)
+      if (template.generateSearchIndex) {
+        generationTasks.push(
+          template.generateSearchIndex(data, OUTPUT_DIR)
+        );
+      }
+
+      // Run all generation tasks for this template concurrently
+      await Promise.all(generationTasks);
+    }));
 
     console.timeEnd('File generation time');
     console.log(`Generated ${totalFilesGenerated} files in total.`);
@@ -125,6 +136,3 @@ async function main() {
     process.exit(1);
   }
 }
-
-// Run the script
-main();
