@@ -83,6 +83,7 @@ module.exports = {
           previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/developers/index.json' : `vn/developers/page/${currentPage - 1}.json`) : null,
         },
       }),
+    typeName: 'developers'
     });
   },
 
