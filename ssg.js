@@ -136,3 +136,5 @@ async function main() {
     process.exit(1);
   }
 }
+// Run the script
+main();
