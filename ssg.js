@@ -6,7 +6,7 @@ const https = require('https');
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
-const FILE_CONCURRENCY_LIMIT = 20; // Safe number of concurrent file operations
+const FILE_CONCURRENCY_LIMIT = 200; // Safe number of concurrent file operations
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
