@@ -1,67 +1,66 @@
 // put in template
 
   // Add search index generation logic
-generateSearchIndex: async function (data, OUTPUT_DIR) {
+generateSearchIndex: async function (data, OUTPUT_DIR, counter) {
   const fs = require('fs').promises;
   const path = require('path');
 
-  // Helper function to tokenize text
   function tokenize(text) {
     return text
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '') // Remove punctuation
-      .split(/\s+/) // Split by whitespace
-      .filter((word) => word.length > 2); // Ignore short words
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter((word) => word.length > 2);
   }
 
-  // Initialize inverted indexes for each two-letter prefix
   const prefixIndexes = {};
 
-  // Process each document
   data.forEach((doc) => {
     const id = doc.id;
-
-    // Tokenize title and description
     const tokens = [...tokenize(doc.title || ''), ...tokenize(doc.description || '')];
 
-    // Ensure tokens is defined before using it
     if (!Array.isArray(tokens)) {
       throw new Error(`Invalid tokens generated for document ID: ${id}`);
     }
 
     tokens.forEach((word) => {
-      const prefix = word.slice(0, 2); // Extract the first two letters, change to 3 for smaller file size 
+      const prefix = word.slice(0, 3);
       if (!prefixIndexes[prefix]) {
-        prefixIndexes[prefix] = {}; // Initialize the prefix object
+        prefixIndexes[prefix] = {};
       }
       if (!prefixIndexes[prefix][word] || !(prefixIndexes[prefix][word] instanceof Set)) {
-        prefixIndexes[prefix][word] = new Set(); // Ensure it's a Set
+        prefixIndexes[prefix][word] = new Set();
       }
-      prefixIndexes[prefix][word].add(id); // Add the document ID to the Set
+      prefixIndexes[prefix][word].add(id);
     });
   });
 
-  // Convert Sets to Arrays for JSON serialization
   for (const prefix in prefixIndexes) {
     for (const word in prefixIndexes[prefix]) {
       prefixIndexes[prefix][word] = Array.from(prefixIndexes[prefix][word]);
     }
   }
 
-  // Create a directory for the search index
   const searchIndexDir = path.join(OUTPUT_DIR, this.basePath, 'search-index');
   await fs.mkdir(searchIndexDir, { recursive: true });
 
-  // Save each prefix index as a separate file
+  const prefixes = Object.keys(prefixIndexes).sort();
+  const prefixCount = prefixes.length;
+
   await Promise.all(
-    Object.keys(prefixIndexes).map(async (prefix) => {
+    prefixes.map(async (prefix, index) => {
       const filePath = path.join(searchIndexDir, `${prefix}.json`);
       await fs.writeFile(filePath, JSON.stringify(prefixIndexes[prefix], null, 2));
-      console.log(`Generated search index file: ${filePath}`);
+      
+      counter.value++;
+      if (index < 3) {
+        console.log(`Generated search index file: ${filePath}`);
+      }
     })
   );
   
   console.log(`Search index generated successfully for ${this.basePath}.`);
+  console.log(`Generated ${prefixCount} search index files in total.`);
 },
 
 // put in main 
