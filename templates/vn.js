@@ -75,7 +75,6 @@ module.exports = {
       items: developers,
       pageSize: POSTS_PER_PAGE,
       basePath: 'vn/developers',
-      fileNameGenerator: (dev) => `${template.slugify(dev.title)}.json`,
       itemMapper: (dev) => ({
         id: dev.id,
         title: dev.title,
@@ -95,7 +94,8 @@ module.exports = {
           previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/developers/index.json' : `vn/developers/page/${currentPage - 1}.json`) : null,
         },
       }),
-    typeName: 'developers'
+    typeName: 'developers',
+    fileNameGenerator: (dev) => `${template.slugify(dev.title)}.json`
     });
   },
 
