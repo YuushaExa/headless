@@ -10,6 +10,7 @@ function slugify(text) {
 }
 
 module.exports = {
+  slugify: slugify,
   basePath: 'vn/posts',
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/main/merged.json',
 
@@ -94,6 +95,7 @@ module.exports = {
           previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/developers/index.json' : `vn/developers/page/${currentPage - 1}.json`) : null,
         },
       }),
+    fileNameGenerator: (dev) => `${slugify(dev.title)}.json`,
     typeName: 'developers'
     });
   },
