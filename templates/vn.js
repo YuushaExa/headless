@@ -6,7 +6,8 @@ function slugify(text) {
     .replace(/\s+/g, '-')            // Replace spaces with -
     .replace(/-+/g, '-')             // Replace multiple - with single -
     .replace(/^-+/, '')              // Trim - from start
-    .replace(/-+$/, '');             // Trim - from end
+    .replace(/-+$/, '')             // Trim - from end
+    .replace(/\//g, '-');
 }
 
 module.exports = {
