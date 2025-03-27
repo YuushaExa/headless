@@ -19,12 +19,12 @@ module.exports = {
     developers: post.developers?.map(dev => ({
       title: dev.name,
       id: dev.id,
-      link: `vn/developers/${dev.title}.json`,
+      link: `vn/developers/${slugify(dev.name)}.json`,
     })),
     aliases: post.aliases || [],
     description: post.description || null,
     image: post.image || null,
-    link: `vn/posts/${post.title}.json`,
+    link: `vn/posts/${slugify(post.title)}.json`,
   }),
 
   pageMapper: (pagePosts, currentPage, totalPages) => ({
@@ -32,7 +32,7 @@ module.exports = {
       id: post.id,
       title: post.title,
       image: post.image || null,
-      link: `vn/posts/${post.title}.json`,
+      link: `vn/posts/${slugify(post.title)}.json`,
     })),
     pagination: {
       currentPage,
@@ -58,7 +58,7 @@ module.exports = {
           id: post.id,
           title: post.title,
           image: post.image || null,
-          link: `vn/posts/${post.title}.json`,
+          link: `vn/posts/${slugify(post.title)}.json`,
         });
       });
     });
@@ -79,13 +79,13 @@ module.exports = {
         id: dev.id,
         title: dev.title,
         posts: dev.posts,
-        link: `vn/developers/${dev.title}.json`,
+        link: `vn/developers/${slugify(dev.title)}.json`,
       }),
       pageMapper: (pageEntities, currentPage, totalPages) => ({
         developers: pageEntities.map(dev => ({
           id: dev.id,
           title: dev.title,
-          link: `vn/developers/${dev.title}.json`,
+          link: `vn/developers/${slugify(dev.title)}.json`,
         })),
         pagination: {
           currentPage,
@@ -113,7 +113,7 @@ generateSearchIndex: async function (data, OUTPUT_DIR, counter) {
   const prefixIndexes = {};
 
   data.forEach((doc) => {
-    const id = doc.title;
+    const id = slugify(doc.title);
     const tokens = [...tokenize(doc.title || ''), ...tokenize(doc.description || '')];
 
     if (!Array.isArray(tokens)) {
