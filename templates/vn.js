@@ -12,6 +12,7 @@ function slugify(text) {
 module.exports = {
   basePath: 'vn/posts',
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/main/merged.json',
+  fileNameGenerator: (post) => `${template.slugify(post.title)}.json`, 
 
   itemMapper: (post) => ({
     id: post.id,
@@ -74,7 +75,8 @@ module.exports = {
     await generatePaginatedFiles({
       items: developers,
       pageSize: POSTS_PER_PAGE,
-      basePath: 'vn/developers', // Developers go under `public/vn/developers/`
+      basePath: 'vn/developers',
+      fileNameGenerator: (dev) => `${template.slugify(dev.title)}.json`,
       itemMapper: (dev) => ({
         id: dev.id,
         title: dev.title,
