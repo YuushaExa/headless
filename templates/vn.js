@@ -39,7 +39,7 @@ module.exports = {
         if (!developersMap.has(dev.id)) {
           developersMap.set(dev.id, {
             id: dev.id,
-            name: dev.name,
+            title: dev.name,
             posts: [],
           });
         }
@@ -66,15 +66,15 @@ module.exports = {
       basePath: 'vn/developers', // Developers go under `public/vn/developers/`
       itemMapper: (dev) => ({
         id: dev.id,
-        name: dev.name,
+        title: dev.title,
         posts: dev.posts,
         link: `vn/developers/${dev.id}.json`,
       }),
       pageMapper: (pageEntities, currentPage, totalPages) => ({
         developers: pageEntities.map(dev => ({
           id: dev.id,
-          name: dev.name,
-          link: `vn/developers/${dev.id}.json`,
+          title: dev.title,
+          link: `vn/developers/${dev.title}.json`,
         })),
         pagination: {
           currentPage,
