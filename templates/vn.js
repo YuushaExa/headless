@@ -6,7 +6,7 @@ module.exports = {
     id: post.id,
     title: post.title,
     developers: post.developers?.map(dev => ({
-      name: dev.name,
+      title: dev.name,
       id: dev.id,
       link: `vn/developers/${dev.id}.json`,
     })),
