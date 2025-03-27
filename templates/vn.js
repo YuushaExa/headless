@@ -12,7 +12,6 @@ function slugify(text) {
 module.exports = {
   basePath: 'vn/posts',
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/main/merged.json',
-  fileNameGenerator: (post) => `${template.slugify(post.title)}.json`, 
 
   itemMapper: (post) => ({
     id: post.id,
