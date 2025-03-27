@@ -1,3 +1,14 @@
+function slugify(text) {
+  if (!text) return '';
+  
+  return text
+    .toString()
+    .replace(/\s+/g, '-')            // Replace spaces with -
+    .replace(/-+/g, '-')             // Replace multiple - with single -
+    .replace(/^-+/, '')              // Trim - from start
+    .replace(/-+$/, '');             // Trim - from end
+}
+
 module.exports = {
   basePath: 'vn/posts',
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/main/merged.json',
@@ -8,12 +19,12 @@ module.exports = {
     developers: post.developers?.map(dev => ({
       title: dev.name,
       id: dev.id,
-      link: `vn/developers/${dev.id}.json`,
+      link: `vn/developers/${dev.title}.json`,
     })),
     aliases: post.aliases || [],
     description: post.description || null,
     image: post.image || null,
-    link: `vn/posts/${post.id}.json`,
+    link: `vn/posts/${post.title}.json`,
   }),
 
   pageMapper: (pagePosts, currentPage, totalPages) => ({
@@ -21,7 +32,7 @@ module.exports = {
       id: post.id,
       title: post.title,
       image: post.image || null,
-      link: `vn/posts/${post.id}.json`,
+      link: `vn/posts/${post.title}.json`,
     })),
     pagination: {
       currentPage,
@@ -47,7 +58,7 @@ module.exports = {
           id: post.id,
           title: post.title,
           image: post.image || null,
-          link: `vn/posts/${post.id}.json`,
+          link: `vn/posts/${post.title}.json`,
         });
       });
     });
@@ -68,7 +79,7 @@ module.exports = {
         id: dev.id,
         title: dev.title,
         posts: dev.posts,
-        link: `vn/developers/${dev.id}.json`,
+        link: `vn/developers/${dev.title}.json`,
       }),
       pageMapper: (pageEntities, currentPage, totalPages) => ({
         developers: pageEntities.map(dev => ({
