@@ -102,7 +102,7 @@ generateSearchIndex: async function (data, OUTPUT_DIR, counter) {
   const prefixIndexes = {};
 
   data.forEach((doc) => {
-    const id = doc.id;
+    const id = doc.title;
     const tokens = [...tokenize(doc.title || ''), ...tokenize(doc.description || '')];
 
     if (!Array.isArray(tokens)) {
