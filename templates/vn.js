@@ -44,6 +44,20 @@ module.exports = {
     },
   }),
 
+  generateItems: async function (data, generatePaginatedFiles, POSTS_PER_PAGE) {
+    console.log(`Generating main items for ${this.basePath}...`);
+    await generatePaginatedFiles({
+      items: data,
+      pageSize: POSTS_PER_PAGE,
+      basePath: this.basePath,      // Use template's basePath
+      itemMapper: this.itemMapper,  // Use template's itemMapper
+      pageMapper: this.pageMapper,  // Use template's pageMapper
+      // Use template's slugify via 'this'
+      fileNameGenerator: (item) => `${this.slugify(item.title)}.json`,
+      typeName: 'post' // Or derive from basePath, e.g., this.basePath.split('/').pop().slice(0, -1)
+    });
+  },
+  
   extractDevelopers: (posts) => {
     const developersMap = new Map();
 
