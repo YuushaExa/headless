@@ -5,10 +5,14 @@ const https = require('https');
 // Constants
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
-const TEMPLATES_DIR = path.join(__dirname, 'templates'); // Use absolute path
+const TEMPLATES_DIR = path.join(__dirname, 'templates');
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
+const fileCounter = { // Use an object to pass by reference
+  value: 0,
+  increment() { this.value++; }
+};
 
 // Utility function to write JSON files with consistent formatting
 async function writeJsonFile(filePath, data) {
