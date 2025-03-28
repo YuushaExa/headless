@@ -124,7 +124,7 @@ generateSearchIndex: async function (data, OUTPUT_DIR, counter) {
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, '')
       .split(/\s+/)
-      .filter((word) => word.length > 2);
+      .filter((word) => word.length > 1);
   }
 
   const prefixIndexes = {};
@@ -138,7 +138,7 @@ generateSearchIndex: async function (data, OUTPUT_DIR, counter) {
     }
 
     tokens.forEach((word) => {
-      const prefix = word.slice(0, 3);
+      const prefix = word.slice(0, 2);
       if (!prefixIndexes[prefix]) {
         prefixIndexes[prefix] = {};
       }
