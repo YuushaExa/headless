@@ -3,7 +3,6 @@ function slugify(text) {
   
   return text
     .toString()
-    .toLowerCase()
     .replace(/\s+/g, '-')            // Replace spaces with -
     .replace(/-+/g, '-')             // Replace multiple - with single -
     .replace(/^-+/, '')              // Trim - from start
