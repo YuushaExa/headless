@@ -13,7 +13,7 @@ function slugify(text) {
 
 module.exports = {
   slugify: slugify,
-  basePath: 'favs/posts',
+  basePath: 'favs',
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/merge/main/favsr/merged.json',
 
   itemMapper: (post) => ({
