@@ -14,7 +14,7 @@ function slugify(text) {
 module.exports = {
   slugify: slugify,
   basePath: 'vn/posts',
-  dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/main/merged.json',
+  dataUrl: 'https://raw.githubusercontent.com/YuushaExa/merge/main/vnr/merged.json',
 
   itemMapper: (post) => ({
     id: post.id,
