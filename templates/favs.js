@@ -9,7 +9,7 @@ function slugify(text) {
     .replace(/^-+/, '')              // Trim - from start
     .replace(/-+$/, '')             // Trim - from end
     .replace(/\//g, '-');
-}
+} 
 
 module.exports = {
   slugify: slugify,
