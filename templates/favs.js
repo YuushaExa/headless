@@ -13,26 +13,26 @@ function slugify(text) {
 
 module.exports = {
   slugify: slugify,
-  basePath: 'favs',
+  basePath: 'favs/posts',
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/merge/main/favsr/merged.json',
 
   itemMapper: (post) => ({
     title: post.title || null,
     image: post.url || null,
-    link: `${basePath}/${slugify(post.title)}.json`,
+    link: `favs/posts/${slugify(post.title)}.json`,
   }),
 
   pageMapper: (pagePosts, currentPage, totalPages) => ({
     posts: pagePosts.map(post => ({
       title: post.title || null,
       image: post.url || null,
-      link: `${basePath}/${slugify(post.title)}.json`,
+      link: `favs/posts/${slugify(post.title)}.json`,
     })),
     pagination: {
       currentPage,
       totalPages,
-      nextPage: currentPage < totalPages ? `${basePath}/page/${currentPage + 1}.json` : null,
-      previousPage: currentPage > 1 ? (currentPage === 2 ? '${basePath}/index.json' : `${basePath}/page/${currentPage - 1}.json`) : null,
+      nextPage: currentPage < totalPages ? `favs/posts/page/${currentPage + 1}.json` : null,
+      previousPage: currentPage > 1 ? (currentPage === 2 ? 'favs/posts/index.json' : `favs/posts/page/${currentPage - 1}.json`) : null,
     },
   }),
 
@@ -41,7 +41,7 @@ module.exports = {
     await generatePaginatedFiles({
       items: data,
       pageSize: POSTS_PER_PAGE,
-      basePath: favs,      // Use template's basePath
+      basePath: favs/posts,      // Use template's basePath
       itemMapper: this.itemMapper,  // Use template's itemMapper
       pageMapper: this.pageMapper,  // Use template's pageMapper
       fileNameGenerator: (item) => `${this.slugify(item.title)}.json`,
