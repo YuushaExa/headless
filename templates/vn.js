@@ -22,12 +22,12 @@ module.exports = {
     developers: post.developers?.map(dev => ({
       title: dev.name,
       id: dev.id,
-      link: `vn/developers/${slugify(dev.name)}`,
+      link: `vn/developers/${slugify(dev.name)}.json`,
     })),
     aliases: post.aliases || [],
     description: post.description || null,
     image: post.image || null,
-    link: `vn/posts/${slugify(post.title)}`,
+    link: `vn/posts/${slugify(post.title)}.json`,
   }),
 
   pageMapper: (pagePosts, currentPage, totalPages) => ({
@@ -35,13 +35,13 @@ module.exports = {
       id: post.id,
       title: post.title,
       image: post.image || null,
-      link: `vn/posts/${slugify(post.title)}`,
+      link: `vn/posts/${slugify(post.title)}.json`,
     })),
     pagination: {
       currentPage,
       totalPages,
-      nextPage: currentPage < totalPages ? `vn/posts/page/${currentPage + 1}` : null,
-      previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/posts/index' : `vn/posts/page/${currentPage - 1}`) : null,
+      nextPage: currentPage < totalPages ? `vn/posts/page/${currentPage + 1}.json` : null,
+      previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/posts/index.json' : `vn/posts/page/${currentPage - 1}.json`) : null,
     },
   }),
 
