@@ -1,4 +1,4 @@
-function slugify(text, maxLength = 100) {
+function slugify(text, maxLength = 30) {
   if (!text) return '';
   let slug = text.normalize('NFKC');
   slug = slug.replace(/[\s\u3000]+/g, '-');
