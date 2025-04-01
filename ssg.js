@@ -6,6 +6,7 @@ const https = require('https');
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
+const PLUGINS_DIR = path.join(__dirname, 'plugins'); 
 
 // Track total number of generated files
 let totalFilesGenerated = 0;
@@ -116,59 +117,94 @@ async function main() {
     console.log(`Cleaned output directory: ${OUTPUT_DIR}`);
     await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
-
     // Load templates
     const templates = await fs.readdir(TEMPLATES_DIR);
 
-    for (const templateFile of templates) {
-      if (!templateFile.endsWith('.js')) continue; // Skip non-js files
+        for (const templateFile of templates) {
+            if (!templateFile.endsWith('.js')) continue;
 
-      const templatePath = path.join(TEMPLATES_DIR, templateFile);
-      console.log(`\n--- Processing Template: ${templateFile} ---`);
-      const template = require(templatePath); // Use require for simplicity here
+            const templatePath = path.join(TEMPLATES_DIR, templateFile);
+            console.log(`\n--- Processing Template: ${templateFile} ---`);
+            // Clear require cache for the template in case it was modified
+            delete require.cache[require.resolve(templatePath)];
+            const template = require(templatePath);
 
-      // Fetch data for the template
-      console.log(`Fetching data from: ${template.dataUrl}`);
-      const data = await fetchData(template.dataUrl);
-      if (!Array.isArray(data)) throw new Error(`Fetched data for ${template.basePath} is not an array.`);
-      if (data.length === 0) {
-        console.warn(`Warning: No data found for ${template.basePath}. Skipping generation.`);
-        continue;
-      }
-      console.log(`Fetched ${data.length} items.`);
+            console.log(`Fetching data from: ${template.dataUrl}`);
+            const data = await fetchData(template.dataUrl);
+            if (!Array.isArray(data)) throw new Error(`Fetched data for ${template.basePath} is not an array.`);
+            if (data.length === 0) {
+                console.warn(`Warning: No data found for ${template.basePath}. Skipping generation.`);
+                continue;
+            }
+            console.log(`Fetched ${data.length} items.`);
 
-      // Generate main items using the template's function
-      if (template.generateItems) {
-        // Pass the necessary arguments: data, the utility function, and the constant
-        await template.generateItems(data, generatePaginatedFiles, POSTS_PER_PAGE);
-      } else {
-        console.warn(`Template ${templateFile} does not have a generateItems function.`);
-      }
+            // Generate main items
+            if (template.generateItems) {
+                await template.generateItems(data, generatePaginatedFiles, POSTS_PER_PAGE);
+            } else {
+                console.warn(`Template ${templateFile} does not have a generateItems function.`);
+            }
 
-      // Generate related entities (if defined in the template)
-      if (template.generateRelatedEntities) {
-        // Pass the necessary arguments
-        await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
-      }
+            // Generate related entities
+            if (template.generateRelatedEntities) {
+                await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
+            }
 
-      // Generate search index (if defined in the template)
-      if (template.generateSearchIndex) {
-         // Pass the necessary arguments
-        await template.generateSearchIndex(data, OUTPUT_DIR, fileCounter); // Pass counter object
-      }
+            // --- Execute configured plugins ---
+            if (template.plugins) {
+                for (const pluginName in template.plugins) {
+                    const pluginConfig = template.plugins[pluginName];
+                    if (pluginConfig && pluginConfig.enabled) {
+                        try {
+                            const pluginPath = path.join(PLUGINS_DIR, `${pluginName}.js`);
+                            // Check if plugin file exists before requiring
+                            try {
+                                await fs.access(pluginPath); // Check file existence
+                            } catch (e) {
+                                console.warn(`Warning: Plugin file not found for enabled plugin "${pluginName}": ${pluginPath}`);
+                                continue; // Skip this plugin
+                            }
 
-      console.log(`--- Finished Template: ${templateFile} ---`);
+                            // REMOVED: delete require.cache[require.resolve(pluginPath)];
+                            const plugin = require(pluginPath); // Load the plugin
+
+                            // Find the primary function (convention: same name as plugin or a known name like 'run' or 'generate')
+                            const pluginFunctionName = `generate${pluginName.charAt(0).toUpperCase() + pluginName.slice(1)}Index`; // e.g., generateSearchIndex
+
+                            if (plugin[pluginFunctionName] && typeof plugin[pluginFunctionName] === 'function') {
+                                console.log(`\nExecuting plugin: ${pluginName} for ${template.basePath}`);
+                                await plugin[pluginFunctionName]({ // Pass necessary context
+                                    data: data,
+                                    outputDir: OUTPUT_DIR,
+                                    basePath: template.basePath,
+                                    config: pluginConfig.settings || {}, // Pass settings
+                                    fileCounter: fileCounter // Pass counter
+                                });
+                            } else {
+                                console.warn(`Warning: Plugin "${pluginName}" is enabled but does not export a function named "${pluginFunctionName}".`);
+                            }
+                        } catch (pluginError) {
+                            console.error(`\n--- ERROR executing plugin "${pluginName}" for template "${templateFile}" ---`);
+                            console.error(pluginError.message);
+                            console.error(pluginError.stack);
+                            // process.exit(1); // Optional: stop on plugin error
+                        }
+                    }
+                }
+            }
+             // --- End Plugin Execution ---
+
+            console.log(`--- Finished Template: ${templateFile} ---`);
+        }
+
+        console.timeEnd('File generation time');
+        console.log(`\nGenerated ${fileCounter.value} files in total.`);
+    } catch (error) {
+        console.error('\n--- FATAL ERROR ---');
+        console.error(error.message);
+        console.error(error.stack);
+        process.exit(1);
     }
-
-    console.timeEnd('File generation time');
-    // Use the counter object's value
-    console.log(`\nGenerated ${fileCounter.value} files in total.`);
-  } catch (error) {
-    console.error('\n--- ERROR ---');
-    console.error(error.message);
-    console.error(error.stack); // Print stack trace for better debugging
-    process.exit(1);
-  }
 }
 
 // Run the script
