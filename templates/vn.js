@@ -46,7 +46,7 @@ module.exports = {
                 fieldsToIndex: ['title', 'description', 'aliases'],
                 idField: 'id',
                 minWordLength: 1, // Example: index words with 3+ chars
-                prefixLength: 3, // Example: shard files by 2-char prefix (aa.json, ab.json...)
+                prefixLength: 2, // Example: shard files by 2-char prefix (aa.json, ab.json...)
             }
         }
     },
