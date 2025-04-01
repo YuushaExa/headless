@@ -40,19 +40,13 @@ function extractDevelopers(posts) {
 module.exports = {
     // Add plugin configuration
     plugins: {
-        search: { // Key matches the plugin filename (without .js)
+        search: { 
             enabled: true,
             settings: {
-                // Specify fields to index for this template
                 fieldsToIndex: ['title', 'description', 'aliases'],
-                // Specify the unique ID field
                 idField: 'id',
-                // Override default minimum word length (optional)
-                minWordLength: 3, // Example: index words with 3+ chars
-                // Override default prefix length (optional)
-                prefixLength: 2, // Example: shard files by 2-char prefix (aa.json, ab.json...)
-                // Override output subdirectory (optional)
-                // outputSubDir: 'idx'
+                minWordLength: 1, // Example: index words with 3+ chars
+                prefixLength: 3, // Example: shard files by 2-char prefix (aa.json, ab.json...)
             }
         }
     },
