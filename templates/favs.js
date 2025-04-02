@@ -1,22 +1,3 @@
-function slugify(text, maxLength = 30) {
-  if (!text) return '';
-  let slug = text.normalize('NFKC');
-  slug = slug.replace(/[\s\u3000]+/g, '-');
-  slug = slug.replace(/[^\p{L}\p{N}\-]+/gu, '');
-  slug = slug.replace(/-+/g, '-');
-  slug = slug.replace(/^-+|-+$/g, '');
-  if (maxLength > 0 && slug.length > maxLength) {
-    slug = slug.slice(0, maxLength);
-    slug = slug.replace(/-+$/, '');
-  }
-
-  if (!slug) {
-      return 'untitled-' + Date.now();
-  }
-
-  return slug;
-}
-
 module.exports = {
   plugins: {
     search: { 
@@ -27,7 +8,8 @@ module.exports = {
         minWordLength: 1,
         prefixLength: 2,
       }
-    }
+    },
+    slugify: true
   },
   
   slugify: slugify,
