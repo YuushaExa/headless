@@ -9,7 +9,7 @@ module.exports = {
         prefixLength: 2,
       }
     },
-    slugify: true
+    this.plugins.slugify: true
   },
   
   basePath: 'favs/posts',
@@ -18,14 +18,14 @@ module.exports = {
   itemMapper: (post) => ({
     title: post.title || null,
     image: post.url || null,
-    link: `favs/posts/${slugify(post.title)}.json`,
+    link: `favs/posts/${this.plugins.slugify(post.title)}.json`,
   }),
 
   pageMapper: (pagePosts, currentPage, totalPages) => ({
     posts: pagePosts.map(post => ({
       title: post.title || null,
       image: post.url || null,
-      link: `favs/posts/${slugify(post.title)}.json`,
+      link: `favs/posts/${this.plugins.slugify(post.title)}.json`,
     })),
     pagination: {
       currentPage,
@@ -36,5 +36,5 @@ module.exports = {
   }),
 
   // Only specify how to generate filenames
-  fileNameGenerator: (item) => `${slugify(item.title)}.json`,
+  fileNameGenerator: (item) => `${this.plugins.slugify(item.title)}.json`,
 };
