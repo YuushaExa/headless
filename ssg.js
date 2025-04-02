@@ -1,15 +1,15 @@
+// ssg.js
 const fs = require('fs').promises;
 const path = require('path');
-const https = require('https');
+const https = require('https').promises; // Use promises version of https
 
 // Constants
 const OUTPUT_DIR = './public';
 const POSTS_PER_PAGE = 10;
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
-const PLUGINS_DIR = path.join(__dirname, 'plugins'); 
+const PLUGINS_DIR = path.join(__dirname, 'plugins');
 
 // Track total number of generated files
-let totalFilesGenerated = 0;
 const fileCounter = { // Use an object to pass by reference
   value: 0,
   increment() { this.value++; }
@@ -17,20 +17,35 @@ const fileCounter = { // Use an object to pass by reference
 
 // Utility function to write JSON files with consistent formatting
 async function writeJsonFile(filePath, data) {
-  await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+    await fs.mkdir(path.dirname(filePath), { recursive: true }); // Ensure directory exists
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
 }
 
-// Fetch JSON data from a URL
+// Fetch JSON data from a URL (using https.promises)
 async function fetchData(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      if (res.statusCode !== 200) reject(new Error(`Failed to fetch data. Status code: ${res.statusCode}`));
-      let data = '';
-      res.on('data', (chunk) => (data += chunk));
-      res.on('end', () => resolve(JSON.parse(data)));
-    }).on('error', reject);
-  });
+    try {
+        const res = await https.get(url);
+        return new Promise((resolve, reject) => {
+            if (res.statusCode < 200 || res.statusCode >= 300) {
+                 return reject(new Error(`Failed to fetch data. Status code: ${res.statusCode} for URL: ${url}`));
+            }
+            let data = '';
+            res.on('data', (chunk) => (data += chunk));
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(data));
+                } catch (parseError) {
+                    reject(new Error(`Failed to parse JSON from ${url}: ${parseError.message}`));
+                }
+            });
+            res.on('error', reject); // Handle connection errors
+        });
+    } catch (error) {
+        // Catch errors during the https.get call itself (e.g., DNS resolution)
+        throw new Error(`Error fetching data from ${url}: ${error.message}`);
+    }
 }
+
 
 // Paginate items into chunks
 function paginateItems(items, pageSize) {
@@ -41,84 +56,102 @@ function paginateItems(items, pageSize) {
   return pages;
 }
 
-async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, pageMapper, fileNameGenerator, typeName = 'items' }) {
-  if (!fileNameGenerator) {
-      throw new Error(`fileNameGenerator is required for generatePaginatedFiles (called for ${typeName})`);
-  }
-  const baseDir = path.join(OUTPUT_DIR, basePath);
-  await fs.mkdir(baseDir, { recursive: true });
-
-  const generatedFiles = []; // Keep track of files generated in this call
-
-  // Generate individual item files
-  await Promise.all(
-    items.map(async (item) => {
-      const filePath = path.join(baseDir, fileNameGenerator(item));
-      await writeJsonFile(filePath, itemMapper(item));
-      generatedFiles.push(filePath);
-      fileCounter.increment(); // Use counter object
-    })
-  );
-
-  // Log snippet of item files generated
-  console.log(`Generated ${items.length} ${typeName} files in ${baseDir}.`);
-  if (items.length > 0) {
-      console.log(` -> Example: ${generatedFiles.slice(0, Math.min(3, generatedFiles.length)).map(f => path.relative(OUTPUT_DIR, f)).join(', ')}`);
-  }
+async function generatePaginatedFiles({ items, pageSize, basePath, itemMapper, pageMapper, fileNameGenerator, typeName = 'items', fileCounter }) {
+    if (!fileNameGenerator || typeof fileNameGenerator !== 'function') { // Added type check
+        throw new Error(`fileNameGenerator function is required for generatePaginatedFiles (called for ${typeName})`);
+    }
+    if (!itemMapper || typeof itemMapper !== 'function') {
+         throw new Error(`itemMapper function is required for generatePaginatedFiles (called for ${typeName})`);
+    }
+     if (!pageMapper || typeof pageMapper !== 'function') {
+         throw new Error(`pageMapper function is required for generatePaginatedFiles (called for ${typeName})`);
+    }
+    if (!basePath) {
+         throw new Error(`basePath is required for generatePaginatedFiles (called for ${typeName})`);
+    }
+    if (!fileCounter || typeof fileCounter.increment !== 'function') {
+        throw new Error(`fileCounter object with increment method is required for generatePaginatedFiles`);
+    }
 
 
-  // Paginate items and generate index files
-  const paginatedItems = paginateItems(items, pageSize);
-  await generatePaginatedIndex(paginatedItems, baseDir, pageMapper, typeName);
+    const baseDir = path.join(OUTPUT_DIR, basePath);
+    await fs.mkdir(baseDir, { recursive: true });
+
+    const generatedFiles = []; // Keep track of files generated in this call
+
+    // Generate individual item files
+    await Promise.all(
+        items.map(async (item) => {
+            const generatedFileName = fileNameGenerator(item);
+            if (!generatedFileName || typeof generatedFileName !== 'string') {
+                 console.warn(`Warning: fileNameGenerator for ${typeName} did not return a valid string for item:`, item);
+                 return; // Skip generating file for this item if filename is invalid
+            }
+            const filePath = path.join(baseDir, generatedFileName);
+            await writeJsonFile(filePath, itemMapper(item));
+            generatedFiles.push(filePath);
+            fileCounter.increment(); // Use counter object
+        })
+    );
+
+    // Log snippet of item files generated
+    console.log(`Generated ${generatedFiles.length} ${typeName} files in ${path.relative(process.cwd(), baseDir)}.`);
+    if (generatedFiles.length > 0) {
+        console.log(` -> Example: ${generatedFiles.slice(0, Math.min(3, generatedFiles.length)).map(f => path.relative(OUTPUT_DIR, f)).join(', ')}`);
+    }
+
+    // Paginate items and generate index files
+    const paginatedItems = paginateItems(items, pageSize);
+    await generatePaginatedIndex(paginatedItems, baseDir, pageMapper, typeName, fileCounter); // Pass fileCounter
 }
 
 // Modify the generatePaginatedIndex function
-async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper, typeName = 'items') {
-  if (paginatedItems.length === 0) {
-      console.log(`No ${typeName} pagination files to generate.`);
-      return;
-  }
+async function generatePaginatedIndex(paginatedItems, baseDir, pageMapper, typeName = 'items', fileCounter) { // Accept fileCounter
+    if (paginatedItems.length === 0) {
+        console.log(`No ${typeName} pagination files to generate.`);
+        return;
+    }
 
-  const pageDir = path.join(baseDir, 'page');
-  if (paginatedItems.length > 1) { // Only create page dir if needed
-    await fs.mkdir(pageDir, { recursive: true });
-  }
+    const pageDir = path.join(baseDir, 'page');
+    if (paginatedItems.length > 1) { // Only create page dir if needed
+        await fs.mkdir(pageDir, { recursive: true });
+    }
 
-  const generatedFiles = [];
+    const generatedFiles = [];
 
-  await Promise.all(
-    paginatedItems.map(async (page, index) => {
-      const pageNumber = index + 1;
-      const isFirstPage = pageNumber === 1;
-      // Determine filename: index.json for page 1, page/N.json otherwise
-      const relativeFilePath = isFirstPage ? 'index.json' : path.join('page', `${pageNumber}.json`);
-      const filePath = path.join(baseDir, relativeFilePath);
+    await Promise.all(
+        paginatedItems.map(async (page, index) => {
+            const pageNumber = index + 1;
+            const isFirstPage = pageNumber === 1;
+            // Determine filename: index.json for page 1, page/N.json otherwise
+            const relativeFilePath = isFirstPage ? 'index.json' : path.join('page', `${pageNumber}.json`);
+            const filePath = path.join(baseDir, relativeFilePath);
 
-      await writeJsonFile(filePath, pageMapper(page, pageNumber, paginatedItems.length));
-      generatedFiles.push(filePath);
-      fileCounter.increment(); // Use counter object
-    })
-  );
+            await writeJsonFile(filePath, pageMapper(page, pageNumber, paginatedItems.length));
+            generatedFiles.push(filePath);
+            fileCounter.increment(); // Use counter object
+        })
+    );
 
-  // Log snippet of pagination files generated
-  console.log(`Generated ${paginatedItems.length} ${typeName} pagination files.`);
-   if (paginatedItems.length > 0) {
-      console.log(` -> Example: ${generatedFiles.slice(0, Math.min(3, generatedFiles.length)).map(f => path.relative(OUTPUT_DIR, f)).join(', ')}`);
-   }
-   console.log(''); // Add a newline for better separation
+    // Log snippet of pagination files generated
+    console.log(`Generated ${paginatedItems.length} ${typeName} pagination files.`);
+    if (paginatedItems.length > 0) {
+        console.log(` -> Example: ${generatedFiles.slice(0, Math.min(3, generatedFiles.length)).map(f => path.relative(OUTPUT_DIR, f)).join(', ')}`);
+    }
+    console.log(''); // Add a newline for better separation
 }
 
 
 // Main function
 async function main() {
-  try {
-    console.time('File generation time');
-    await fs.rm(OUTPUT_DIR, { recursive: true, force: true }); // Clean output dir
-    console.log(`Cleaned output directory: ${OUTPUT_DIR}`);
-    await fs.mkdir(OUTPUT_DIR, { recursive: true });
+    try {
+        console.time('Total generation time');
+        await fs.rm(OUTPUT_DIR, { recursive: true, force: true }); // Clean output dir
+        console.log(`Cleaned output directory: ${OUTPUT_DIR}`);
+        await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
-    // Load templates
-    const templates = await fs.readdir(TEMPLATES_DIR);
+        // Load templates
+        const templates = await fs.readdir(TEMPLATES_DIR);
 
         for (const templateFile of templates) {
             if (!templateFile.endsWith('.js')) continue;
@@ -129,28 +162,73 @@ async function main() {
             delete require.cache[require.resolve(templatePath)];
             const template = require(templatePath);
 
+            if (!template.dataUrl) {
+                console.warn(`Warning: Template ${templateFile} is missing 'dataUrl'. Skipping.`);
+                continue;
+            }
+
             console.log(`Fetching data from: ${template.dataUrl}`);
-            const data = await fetchData(template.dataUrl);
-            if (!Array.isArray(data)) throw new Error(`Fetched data for ${template.basePath} is not an array.`);
+            let data;
+            try {
+                data = await fetchData(template.dataUrl);
+            } catch (fetchError) {
+                console.error(`Error fetching data for ${templateFile}: ${fetchError.message}. Skipping template.`);
+                continue; // Skip this template if data fetching fails
+            }
+
+            if (!Array.isArray(data)) {
+                 console.error(`Error: Fetched data for ${templateFile} (${template.dataUrl}) is not an array. Skipping.`);
+                 continue; // Skip if data is not an array
+            }
             if (data.length === 0) {
-                console.warn(`Warning: No data found for ${template.basePath}. Skipping generation.`);
+                console.warn(`Warning: No data found for ${template.basePath || templateFile}. Skipping generation for this template.`);
                 continue;
             }
             console.log(`Fetched ${data.length} items.`);
 
-            // Generate main items
-            if (template.generateItems) {
-                await template.generateItems(data, generatePaginatedFiles, POSTS_PER_PAGE);
+
+            // --- Primary Item Generation ---
+            if (template.generateItems && typeof template.generateItems === 'function') {
+                // Use custom generateItems function if provided
+                console.log(`Using custom generateItems function from ${templateFile}...`);
+                await template.generateItems(data, generatePaginatedFiles, POSTS_PER_PAGE, fileCounter); // Pass fileCounter
+            } else if (template.basePath && template.itemMapper && template.pageMapper && template.fileNameGenerator && template.slugify) {
+                // **NEW: Automatic generation based on declarative config**
+                console.log(`Using standard item generation for ${template.basePath}...`);
+
+                // Ensure fileNameGenerator uses the template's slugify correctly
+                // We bind the template object as `this` context for the generator
+                const boundFileNameGenerator = (item) => template.fileNameGenerator.call(template, item);
+
+                // Automatically determine typeName from basePath if not provided
+                const typeName = template.typeName || template.basePath.split(/[\/\\]/).pop()?.replace(/s$/, '') || 'item'; // Get last path segment, remove trailing 's'
+
+                await generatePaginatedFiles({
+                    items: data,
+                    pageSize: POSTS_PER_PAGE,
+                    basePath: template.basePath,
+                    itemMapper: template.itemMapper,
+                    pageMapper: template.pageMapper,
+                    fileNameGenerator: boundFileNameGenerator, // Use the bound function
+                    typeName: typeName,
+                    fileCounter: fileCounter // Pass counter
+                });
             } else {
-                console.warn(`Template ${templateFile} does not have a generateItems function.`);
+                // Neither custom function nor standard config found for primary items
+                 console.log(`Template ${templateFile} does not define 'generateItems' or the standard properties (basePath, itemMapper, pageMapper, fileNameGenerator, slugify) for primary item generation. Skipping standard generation.`);
             }
+            // --- End Primary Item Generation ---
 
-            // Generate related entities
-            if (template.generateRelatedEntities) {
-                await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE);
+
+            // --- Related Entities Generation ---
+            if (template.generateRelatedEntities && typeof template.generateRelatedEntities === 'function') {
+                 console.log(`Generating related entities for ${templateFile}...`);
+                await template.generateRelatedEntities(data, generatePaginatedFiles, POSTS_PER_PAGE, fileCounter); // Pass fileCounter
             }
+             // --- End Related Entities Generation ---
 
-            // --- Execute configured plugins ---
+
+            // --- Plugin Execution ---
             if (template.plugins) {
                 for (const pluginName in template.plugins) {
                     const pluginConfig = template.plugins[pluginName];
@@ -161,22 +239,23 @@ async function main() {
                             try {
                                 await fs.access(pluginPath); // Check file existence
                             } catch (e) {
-                                console.warn(`Warning: Plugin file not found for enabled plugin "${pluginName}": ${pluginPath}`);
+                                console.warn(`Warning: Plugin file not found for enabled plugin "${pluginName}": ${pluginPath}. Skipping plugin.`);
                                 continue; // Skip this plugin
                             }
 
-                            // REMOVED: delete require.cache[require.resolve(pluginPath)];
+                            // It's generally safer *not* to delete cache for shared modules unless specifically needed for hot-reloading during development
+                            // delete require.cache[require.resolve(pluginPath)];
                             const plugin = require(pluginPath); // Load the plugin
 
-                            // Find the primary function (convention: same name as plugin or a known name like 'run' or 'generate')
+                            // Convention for plugin execution function name
                             const pluginFunctionName = `generate${pluginName.charAt(0).toUpperCase() + pluginName.slice(1)}Index`; // e.g., generateSearchIndex
 
                             if (plugin[pluginFunctionName] && typeof plugin[pluginFunctionName] === 'function') {
-                                console.log(`\nExecuting plugin: ${pluginName} for ${template.basePath}`);
+                                console.log(`\nExecuting plugin: ${pluginName} for ${template.basePath || templateFile}`);
                                 await plugin[pluginFunctionName]({ // Pass necessary context
                                     data: data,
                                     outputDir: OUTPUT_DIR,
-                                    basePath: template.basePath,
+                                    basePath: template.basePath, // Plugin might need this
                                     config: pluginConfig.settings || {}, // Pass settings
                                     fileCounter: fileCounter // Pass counter
                                 });
@@ -187,17 +266,18 @@ async function main() {
                             console.error(`\n--- ERROR executing plugin "${pluginName}" for template "${templateFile}" ---`);
                             console.error(pluginError.message);
                             console.error(pluginError.stack);
-                            // process.exit(1); // Optional: stop on plugin error
+                            // Consider whether to exit or just continue
+                            // process.exit(1);
                         }
                     }
                 }
             }
-             // --- End Plugin Execution ---
+            // --- End Plugin Execution ---
 
             console.log(`--- Finished Template: ${templateFile} ---`);
         }
 
-        console.timeEnd('File generation time');
+        console.timeEnd('Total generation time');
         console.log(`\nGenerated ${fileCounter.value} files in total.`);
     } catch (error) {
         console.error('\n--- FATAL ERROR ---');
