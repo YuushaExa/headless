@@ -126,15 +126,22 @@ async function main() {
             const templatePath = path.join(TEMPLATES_DIR, templateFile);
             console.log(`\n--- Processing Template: ${templateFile} ---`);
 
-// In the template processing section:
 const template = require(templatePath);
+
+// Initialize plugins object
 template.plugins = {};
 
-// Load and inject enabled plugins
-for (const pluginName in templateConfig.plugins) {
-    if (templateConfig.plugins[pluginName]?.enabled || templateConfig.plugins[pluginName] === true) {
-        const pluginPath = path.join(PLUGINS_DIR, `${pluginName}.js`);
-        template.plugins[pluginName] = require(pluginPath);
+// Process plugin configuration (using template.plugins, not templateConfig)
+for (const pluginName in template.plugins) {
+    const pluginConfig = template.plugins[pluginName];
+    if (pluginConfig?.enabled || pluginConfig === true) {
+        try {
+            const pluginPath = path.join(PLUGINS_DIR, `${pluginName}.js`);
+            template.plugins[pluginName] = require(pluginPath);
+        } catch (e) {
+            console.error(`Failed to load plugin ${pluginName}:`, e);
+            // Continue with other plugins
+        }
     }
 }
           
