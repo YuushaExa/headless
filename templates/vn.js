@@ -1,15 +1,3 @@
-function slugify(text) {
-    if (!text) return '';
-    return text
-        .toString()
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-+/, '')
-        .replace(/-+$/, '')
-        .replace(/\//g, '-');
-}
-
 function extractDevelopers(posts) {
     const developersMap = new Map();
     posts.forEach(post => {
@@ -42,7 +30,8 @@ module.exports = {
                 minWordLength: 1,
                 prefixLength: 2,
             }
-        }
+        },
+        slugify: true
     },
 
     basePath: 'vn/posts',
