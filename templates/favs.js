@@ -60,7 +60,7 @@ module.exports = {
     await generatePaginatedFiles({
       items: data,
       pageSize: POSTS_PER_PAGE,
-      basePath: this.basePath,      // Use template's basePath
+      basePath: 'favs/posts',      // Use template's basePath
       itemMapper: this.itemMapper,  // Use template's itemMapper
       pageMapper: this.pageMapper,  // Use template's pageMapper
       fileNameGenerator: (item) => `${this.slugify(item.title)}.json`,
