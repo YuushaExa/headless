@@ -183,7 +183,6 @@ if (template.generateItems) {
                                 continue; // Skip this plugin
                             }
 
-                            // REMOVED: delete require.cache[require.resolve(pluginPath)];
                             const plugin = require(pluginPath); // Load the plugin
 
                             // Find the primary function (convention: same name as plugin or a known name like 'run' or 'generate')
