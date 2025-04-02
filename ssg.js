@@ -125,10 +125,15 @@ async function main() {
 
             const templatePath = path.join(TEMPLATES_DIR, templateFile);
             console.log(`\n--- Processing Template: ${templateFile} ---`);
-            // Clear require cache for the template in case it was modified
-            delete require.cache[require.resolve(templatePath)];
-            const template = require(templatePath);
 
+            const template = require(templatePath);
+            template.plugins = {};
+for (const pluginName in templateConfig.plugins) {
+    if (templateConfig.plugins[pluginName]?.enabled || templateConfig.plugins[pluginName] === true) {
+        const pluginPath = path.join(PLUGINS_DIR, `${pluginName}.js`);
+        template.plugins[pluginName] = require(pluginPath);
+    }
+}
             console.log(`Fetching data from: ${template.dataUrl}`);
             const data = await fetchData(template.dataUrl);
             if (!Array.isArray(data)) throw new Error(`Fetched data for ${template.basePath} is not an array.`);
