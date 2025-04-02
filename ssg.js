@@ -125,26 +125,10 @@ async function main() {
 
             const templatePath = path.join(TEMPLATES_DIR, templateFile);
             console.log(`\n--- Processing Template: ${templateFile} ---`);
+            // Clear require cache for the template in case it was modified
+            delete require.cache[require.resolve(templatePath)];
+            const template = require(templatePath);
 
-const template = require(templatePath);
-
-// Initialize plugins object
-template.plugins = {};
-
-// Process plugin configuration (using template.plugins, not templateConfig)
-for (const pluginName in template.plugins) {
-    const pluginConfig = template.plugins[pluginName];
-    if (pluginConfig?.enabled || pluginConfig === true) {
-        try {
-            const pluginPath = path.join(PLUGINS_DIR, `${pluginName}.js`);
-            template.plugins[pluginName] = require(pluginPath);
-        } catch (e) {
-            console.error(`Failed to load plugin ${pluginName}:`, e);
-            // Continue with other plugins
-        }
-    }
-}
-          
             console.log(`Fetching data from: ${template.dataUrl}`);
             const data = await fetchData(template.dataUrl);
             if (!Array.isArray(data)) throw new Error(`Fetched data for ${template.basePath} is not an array.`);
@@ -199,6 +183,7 @@ if (template.generateItems) {
                                 continue; // Skip this plugin
                             }
 
+                            // REMOVED: delete require.cache[require.resolve(pluginPath)];
                             const plugin = require(pluginPath); // Load the plugin
 
                             // Find the primary function (convention: same name as plugin or a known name like 'run' or 'generate')
