@@ -9,7 +9,7 @@ module.exports = {
         prefixLength: 2,
       }
     },
-    this.plugins.slugify: true
+    slugify: true
   },
   
   basePath: 'favs/posts',
