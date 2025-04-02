@@ -1,100 +1,74 @@
 // templates/fav.js
 
-// Keep slugify function (or import from a shared util)
+// Define slugify function (keep as is)
 function slugify(text, maxLength = 30) {
-    if (!text) return 'untitled-' + Date.now(); // Handle empty/null text better
-    let slug = String(text).normalize('NFKC'); // Ensure text is a string
-    slug = slug.replace(/[\s\u3000]+/g, '-'); // Replace spaces/ideographic space with hyphen
-    slug = slug.replace(/[^\p{L}\p{N}\-]+/gu, ''); // Remove non-letter, non-number, non-hyphen chars
-    slug = slug.replace(/-+/g, '-'); // Collapse consecutive hyphens
+    if (!text) return '';
+    let slug = text.toString().normalize('NFKC'); // Ensure input is string
+    slug = slug.toLowerCase(); // Convert to lowercase
+    slug = slug.replace(/[\s\u3000]+/g, '-'); // Replace spaces and full-width spaces with hyphens
+    slug = slug.replace(/[^\p{L}\p{N}\-]+/gu, ''); // Remove non-alphanumeric chars except hyphens
+    slug = slug.replace(/-+/g, '-'); // Collapse multiple hyphens
     slug = slug.replace(/^-+|-+$/g, ''); // Trim leading/trailing hyphens
 
-    if (maxLength > 0) { // Apply maxLength logic
-        // Truncate carefully to avoid ending with a partial character or hyphen
-        let currentLength = 0;
-        let truncatedSlug = '';
-        for (const char of slug) {
-             const charLength = Buffer.byteLength(char); // More accurate length for unicode
-             if (currentLength + charLength <= maxLength) {
-                 truncatedSlug += char;
-                 currentLength += charLength;
-             } else {
-                 break;
-             }
-        }
-         slug = truncatedSlug.replace(/-+$/, ''); // Remove trailing hyphen after potential truncation
+    // Truncate slug to maxLength
+    if (slug.length > maxLength) {
+        slug = slug.substring(0, maxLength);
+        // Avoid ending with a hyphen after truncation
+        slug = slug.replace(/-+$/, '');
     }
 
-    if (!slug) { // If slug becomes empty after processing
-        return 'untitled-' + Date.now();
+    if (!slug) {
+        // Generate a simple unique ID if slug becomes empty
+        return 'untitled-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 5);
     }
 
-    return slug.toLowerCase(); // Often slugs are lowercase
+    return slug;
 }
 
-
 module.exports = {
-    // --- Core Configuration for Standard Generation ---
-    dataUrl: 'https://raw.githubusercontent.com/YuushaExa/merge/main/favsr/merged.json',
+    // --- Core Configuration ---
     basePath: 'favs/posts',
-    slugify: slugify, // Export the function used by fileNameGenerator
+    dataUrl: 'https://raw.githubusercontent.com/YuushaExa/merge/main/favsr/merged.json',
+    typeName: 'post', // Explicitly define the type name for logs/errors
+    // pageSize: 15, // Optional: Override default POSTS_PER_PAGE
 
-    // This function will generate the filename for individual item JSON files.
-    // It uses `this.slugify` which works because ssg.js binds `this` correctly.
+    // --- Functions ---
+    slugify: slugify, // Make slugify available
+
     fileNameGenerator: function(item) {
-        // Add fallback for items lacking a title
-        const titleToSlugify = item && item.title ? item.title : 'untitled';
-        return `${this.slugify(titleToSlugify)}.json`;
+        const title = item.title || 'untitled'; // Handle potentially missing titles
+        return `${this.slugify(title)}.json`;
     },
 
-    // Defines the structure of individual item JSON files
     itemMapper: (post) => ({
         title: post.title || null,
         image: post.url || null,
-        // Generate link relative to the OUTPUT_DIR root
-        link: `/${path.join('favs/posts', `${slugify(post.title || 'untitled')}.json`).replace(/\\/g, '/')}`,
-        // Or keep it as before if you resolve paths client-side:
-        // link: `favs/posts/${slugify(post.title || 'untitled')}.json`,
     }),
 
-    // Defines the structure of the pagination index files (index.json, page/2.json, etc.)
-    pageMapper: (pagePosts, currentPage, totalPages) => {
-        const basePath = 'favs/posts'; // Define base path for link generation
-        return {
-            posts: pagePosts.map(post => ({
-                title: post.title || null,
-                image: post.url || null,
-                 // Ensure consistent link generation here too
-                link: `/${path.join(basePath, `${slugify(post.title || 'untitled')}.json`).replace(/\\/g, '/')}`,
-            })),
-            pagination: {
-                currentPage,
-                totalPages,
-                // Generate links relative to the OUTPUT_DIR root
-                nextPage: currentPage < totalPages ? `/${path.join(basePath, 'page', `${currentPage + 1}.json`).replace(/\\/g, '/')}` : null,
-                previousPage: currentPage > 1 ? (currentPage === 2 ? `/${path.join(basePath, 'index.json').replace(/\\/g, '/')}` : `/${path.join(basePath, 'page', `${currentPage - 1}.json`).replace(/\\/g, '/')}`) : null,
-            },
-        };
-    },
+    pageMapper: (pagePosts, currentPage, totalPages) => ({
+        posts: pagePosts.map(post => ({
+            title: post.title || null,
+            image: post.url || null,
+            link: `/${module.exports.basePath}/${module.exports.slugify(post.title || 'untitled')}.json` // Use module's props
+        })),
+        pagination: {
+            currentPage,
+            totalPages,
+            nextPage: currentPage < totalPages ? `/${module.exports.basePath}/page/${currentPage + 1}.json` : null,
+            previousPage: currentPage > 1 ? (currentPage === 2 ? `/${module.exports.basePath}/index.json` : `/${module.exports.basePath}/page/${currentPage - 1}.json`) : null,
+        },
+    }),
 
-    // Optional: Define typeName if auto-detection isn't desired
-    // typeName: 'favourite',
-
-    // --- Plugins ---
     plugins: {
         search: {
             enabled: true,
             settings: {
-                fieldsToIndex: ['title', 'url'],
-                idField: 'title', // Make sure IDs are unique, title might not be! Consider adding a unique ID to your source data.
+                fieldsToIndex: ['title', 'url'], // Assuming 'url' is the image URL here? Check data structure.
+                idField: 'title', // Make sure 'title' is unique or use a different ID field if available
                 minWordLength: 1,
                 prefixLength: 2,
             }
         }
     },
-
-    // --- Optional Custom Generation Hooks (if needed for specific logic) ---
-    // generateItems: async function (data, generatePaginatedFiles, POSTS_PER_PAGE, fileCounter) { ... } // Only if standard gen isn't enough
-    // generateRelatedEntities: async function (data, generatePaginatedFiles, POSTS_PER_PAGE, fileCounter) { ... }
 
 };
