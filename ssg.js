@@ -126,6 +126,7 @@ async function main() {
             const templatePath = path.join(TEMPLATES_DIR, templateFile);
             console.log(`\n--- Processing Template: ${templateFile} ---`);
 
+// In the template processing section:
 const template = require(templatePath);
 template.plugins = {};
 
