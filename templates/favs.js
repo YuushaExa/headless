@@ -12,7 +12,6 @@ module.exports = {
     slugify: true
   },
   
-  slugify: slugify,
   basePath: 'favs/posts',
   dataUrl: 'https://raw.githubusercontent.com/YuushaExa/merge/main/favsr/merged.json',
 
