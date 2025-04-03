@@ -45,7 +45,7 @@ module.exports = {
         }
     },
 
-    basePath: 'posts',
+    basePath: 'vn/posts',
     dataUrl: 'https://raw.githubusercontent.com/YuushaExa/merge/main/vnr/merged.json',
     slugify: slugify,
 
@@ -76,8 +76,8 @@ module.exports = {
         pagination: {
             currentPage,
             totalPages,
-            nextPage: currentPage < totalPages ? `posts/page/${currentPage + 1}.json` : null,
-            previousPage: currentPage > 1 ? (currentPage === 2 ? 'posts/index.json' : `posts/page/${currentPage - 1}.json`) : null,
+            nextPage: currentPage < totalPages ? `vn/posts/page/${currentPage + 1}.json` : null,
+            previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/posts/index.json' : `vn/posts/page/${currentPage - 1}.json`) : null,
         },
     }),
 
@@ -88,7 +88,7 @@ module.exports = {
         await generatePaginatedFiles({
             items: developers,
             pageSize: POSTS_PER_PAGE,
-            basePath: 'developers',
+            basePath: 'vn/developers',
             itemMapper: (dev) => ({
                 id: dev.id,
                 title: dev.title,
@@ -104,8 +104,8 @@ module.exports = {
                 pagination: {
                     currentPage,
                     totalPages,
-                    nextPage: currentPage < totalPages ? `developers/page/${currentPage + 1}.json` : null,
-                    previousPage: currentPage > 1 ? (currentPage === 2 ? 'developers/index.json' : `developers/page/${currentPage - 1}.json`) : null,
+                    nextPage: currentPage < totalPages ? `vn/developers/page/${currentPage + 1}.json` : null,
+                    previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/developers/index.json' : `vn/developers/page/${currentPage - 1}.json`) : null,
                 },
             }),
             fileNameGenerator: (dev) => `${this.slugify(dev.title)}.json`,
