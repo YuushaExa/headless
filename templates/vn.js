@@ -25,7 +25,7 @@ function extractDevelopers(posts) {
                 id: post.id,
                 title: post.title,
                 image: post.image || null,
-                link: `vn/posts/${slugify(post.title)}.json`,
+                link: `posts/${slugify(post.title)}.json`,
             });
         });
     });
@@ -45,7 +45,7 @@ module.exports = {
         }
     },
 
-    basePath: 'vn/posts',
+    basePath: 'posts',
     dataUrl: 'https://raw.githubusercontent.com/YuushaExa/merge/main/vnr/merged.json',
     slugify: slugify,
 
@@ -58,12 +58,12 @@ module.exports = {
         developers: post.developers?.map(dev => ({
             title: dev.name,
             id: dev.id,
-            link: `vn/developers/${slugify(dev.name)}.json`,
+            link: `developers/${slugify(dev.name)}.json`,
         })),
         aliases: post.aliases || [],
         description: post.description || null,
         image: post.image || null,
-        link: `vn/posts/${slugify(post.title)}.json`,
+        link: `posts/${slugify(post.title)}.json`,
     }),
 
     pageMapper: (pagePosts, currentPage, totalPages) => ({
@@ -71,13 +71,13 @@ module.exports = {
             id: post.id,
             title: post.title,
             image: post.image || null,
-            link: `vn/posts/${slugify(post.title)}.json`,
+            link: `posts/${slugify(post.title)}.json`,
         })),
         pagination: {
             currentPage,
             totalPages,
-            nextPage: currentPage < totalPages ? `vn/posts/page/${currentPage + 1}.json` : null,
-            previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/posts/index.json' : `vn/posts/page/${currentPage - 1}.json`) : null,
+            nextPage: currentPage < totalPages ? `posts/page/${currentPage + 1}.json` : null,
+            previousPage: currentPage > 1 ? (currentPage === 2 ? 'posts/index.json' : `posts/page/${currentPage - 1}.json`) : null,
         },
     }),
 
@@ -88,24 +88,24 @@ module.exports = {
         await generatePaginatedFiles({
             items: developers,
             pageSize: POSTS_PER_PAGE,
-            basePath: 'vn/developers',
+            basePath: 'developers',
             itemMapper: (dev) => ({
                 id: dev.id,
                 title: dev.title,
                 posts: dev.posts,
-                link: `vn/developers/${this.slugify(dev.title)}.json`,
+                link: `developers/${this.slugify(dev.title)}.json`,
             }),
             pageMapper: (pageEntities, currentPage, totalPages) => ({
                 developers: pageEntities.map(dev => ({
                     id: dev.id,
                     title: dev.title,
-                    link: `vn/developers/${this.slugify(dev.title)}.json`,
+                    link: `developers/${this.slugify(dev.title)}.json`,
                 })),
                 pagination: {
                     currentPage,
                     totalPages,
-                    nextPage: currentPage < totalPages ? `vn/developers/page/${currentPage + 1}.json` : null,
-                    previousPage: currentPage > 1 ? (currentPage === 2 ? 'vn/developers/index.json' : `vn/developers/page/${currentPage - 1}.json`) : null,
+                    nextPage: currentPage < totalPages ? `developers/page/${currentPage + 1}.json` : null,
+                    previousPage: currentPage > 1 ? (currentPage === 2 ? 'developers/index.json' : `developers/page/${currentPage - 1}.json`) : null,
                 },
             }),
             fileNameGenerator: (dev) => `${this.slugify(dev.title)}.json`,
