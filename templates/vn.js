@@ -38,7 +38,7 @@ module.exports = {
             enabled: true,
             settings: {
                 fieldsToIndex: ['title', 'description', 'aliases'],
-                idField: 'id',
+                idField: 'title',
                 minWordLength: 1,
                 prefixLength: 2,
             }
