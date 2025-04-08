@@ -37,7 +37,7 @@ module.exports = {
         search: { 
             enabled: true,
             settings: {
-                fieldsToIndex: ['title', 'description', 'aliases'],
+                fieldsToIndex: ['title', 'description'],
                 idField: 'id',
                 minWordLength: 1,
                 prefixLength: 2,
