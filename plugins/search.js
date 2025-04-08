@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS = {
     outputSubDir: 'search-index'             // Subdirectory within the basePath for index files
 };
 
-// Utility function to write JSON files (can be shared or kept here)
+// Utility function to write JSON files
 async function writeJsonFile(filePath, data) {
     await fs.writeFile(filePath, JSON.stringify(data, null, 2));
 }
@@ -23,23 +23,11 @@ function tokenize(text, minWordLength) {
     }
     return text
         .toLowerCase()
-        // Remove characters that are not letters, numbers, or whitespace
         .replace(/[^a-z0-9\s]/g, '')
-        // Split into words
         .split(/\s+/)
-        // Filter out empty strings and words shorter than minWordLength
         .filter((word) => word && word.length >= minWordLength);
 }
 
-/**
- * Generates a sharded search index based on word prefixes.
- * @param {object} args - Arguments object.
- * @param {Array<object>} args.data - The array of data items to index.
- * @param {string} args.outputDir - The root public output directory (e.g., './public').
- * @param {string} args.basePath - The base path for this data type within outputDir (e.g., 'vn/posts').
- * @param {object} args.config - Plugin-specific configuration settings.
- * @param {object} args.fileCounter - Shared counter object { value: number, increment: function }.
- */
 async function generateSearchIndex({ data, outputDir, basePath, config, fileCounter }) {
     console.log(`[Search Plugin] Starting index generation for basePath: ${basePath}`);
 
@@ -65,7 +53,6 @@ async function generateSearchIndex({ data, outputDir, basePath, config, fileCoun
 
     console.log(`[Search Plugin] Using settings:`, settings);
 
-
     const prefixIndexes = {}; // { prefix: { word: Set<id> } }
 
     data.forEach((doc, docIndex) => {
@@ -88,12 +75,17 @@ async function generateSearchIndex({ data, outputDir, basePath, config, fileCoun
 
             const prefix = word.slice(0, settings.prefixLength);
 
+            // Initialize prefix if it doesn't exist
             if (!prefixIndexes[prefix]) {
                 prefixIndexes[prefix] = {};
             }
+            
+            // Initialize word Set if it doesn't exist
             if (!prefixIndexes[prefix][word]) {
                 prefixIndexes[prefix][word] = new Set();
             }
+            
+            // Add the document ID to the Set
             prefixIndexes[prefix][word].add(docId);
         });
     });
@@ -101,7 +93,7 @@ async function generateSearchIndex({ data, outputDir, basePath, config, fileCoun
     // Convert Sets to Arrays for JSON serialization
     for (const prefix in prefixIndexes) {
         for (const word in prefixIndexes[prefix]) {
-            prefixIndexes[prefix][word] = Array.from(prefixIndexes[prefix][word]).sort(); // Sort IDs for consistency
+            prefixIndexes[prefix][word] = Array.from(prefixIndexes[prefix][word]).sort();
         }
     }
 
@@ -116,7 +108,7 @@ async function generateSearchIndex({ data, outputDir, basePath, config, fileCoun
             const filePath = path.join(searchIndexDir, `${prefix}.json`);
             await writeJsonFile(filePath, prefixIndexes[prefix]);
             generatedFiles.push(filePath);
-            fileCounter.increment(); // Use shared counter
+            fileCounter.increment();
         })
     );
 
@@ -124,7 +116,7 @@ async function generateSearchIndex({ data, outputDir, basePath, config, fileCoun
     if (prefixes.length > 0) {
          console.log(` -> Example: ${generatedFiles.slice(0, Math.min(3, generatedFiles.length)).map(f => path.relative(outputDir, f)).join(', ')}`);
     }
-     console.log(''); // Add newline
+    console.log('');
 }
 
 module.exports = {
