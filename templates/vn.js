@@ -37,10 +37,10 @@ module.exports = {
         search: { 
             enabled: true,
             settings: {
-                fieldsToIndex: ['title', 'description'],
+                fieldsToIndex: ['id', 'title', 'description'],
                 idField: 'id',
-                minWordLength: 1,
-                prefixLength: 2,
+                minWordLength: 2,
+                prefixLength: 3,
             }
         }
     },
