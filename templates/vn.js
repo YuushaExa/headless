@@ -46,7 +46,7 @@ module.exports = {
     },
 
     basePath: 'vn/posts',
-    dataUrl: 'https://raw.githubusercontent.com/YuushaExa/merge/main/vnr/merged.json',
+    dataUrl: 'https://raw.githubusercontent.com/YuushaExa/testapi/main/merged.json',
     slugify: slugify,
 
     // This replaces generateItems - tells the SSG how to name individual post files
