@@ -124,7 +124,7 @@ async function generateSearchIndex({ data, outputDir, basePath, config, fileCoun
 
     console.log(`[Search Plugin] Generated ${prefixes.length} search index files for ${basePath} in ${searchIndexDir}.`);
     if (prefixes.length > 0) {
-         console.log(` -> Example: ${generatedFiles.slice(0, Math.min(3, generatedFiles.length)).map(f => path.relative(outputDir, f)).join(', ')}`);Add commentMore actions
+         console.log(` -> Example: ${generatedFiles.slice(0, Math.min(3, generatedFiles.length)).map(f => path.relative(outputDir, f)).join(', ')}`);
     }
     console.log('');
 }
