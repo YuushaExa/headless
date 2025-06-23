@@ -5,7 +5,7 @@ const path = require('path');
 
 const DEFAULT_SETTINGS = {
     fieldsToIndex: ['title', 'description'],
-    idField: 'description',
+    idField: 'id',
     minWordLength: 2,
     prefixLength: 2,
     outputSubDir: 'search-index'
