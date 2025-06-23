@@ -2,131 +2,130 @@
 const fs = require('fs').promises;
 const path = require('path');
 
-// Default settings for the search plugin
+
 const DEFAULT_SETTINGS = {
-    fieldsToIndex: ['title', 'description'], // Fields to extract tokens from
-    idField: 'id',                           // Field containing the unique document ID
-    minWordLength: 2,                        // Minimum length of a word to be indexed
-    prefixLength: 2,                         // Length of the prefix for sharding index files
-    outputSubDir: 'search-index'             // Subdirectory within the basePath for index files
+    fieldsToIndex: ['title', 'description'],
+    idField: 'id',
+    minWordLength: 2,
+    prefixLength: 2,
+    outputSubDir: 'search-index'
 };
 
-// Utility function to write JSON files (can be shared or kept here)
+
 async function writeJsonFile(filePath, data) {
     await fs.writeFile(filePath, JSON.stringify(data, null, 2));
 }
 
-// Tokenizer function
+
 function tokenize(text, minWordLength) {
-    if (typeof text !== 'string' || !text) {
-        return [];
-    }
+    if (typeof text !== 'string' || !text) return [];
+
     return text
         .toLowerCase()
-        // Remove characters that are not letters, numbers, or whitespace
         .replace(/[^a-z0-9\s]/g, '')
-        // Split into words
         .split(/\s+/)
-        // Filter out empty strings and words shorter than minWordLength
-        .filter((word) => word && word.length >= minWordLength);
+        .filter(word => word && word.length >= minWordLength);
 }
 
-/**
- * Generates a sharded search index based on word prefixes.
- * @param {object} args - Arguments object.
- * @param {Array<object>} args.data - The array of data items to index.
- * @param {string} args.outputDir - The root public output directory (e.g., './public').
- * @param {string} args.basePath - The base path for this data type within outputDir (e.g., 'vn/posts').
- * @param {object} args.config - Plugin-specific configuration settings.
- * @param {object} args.fileCounter - Shared counter object { value: number, increment: function }.
- */
 async function generateSearchIndex({ data, outputDir, basePath, config, fileCounter }) {
-    console.log(`[Search Plugin] Starting index generation for basePath: ${basePath}`);
+    console.log(`[Search Plugin] Starting index generation for ${basePath}`);
 
-    // Merge default settings with provided config
+
     const settings = { ...DEFAULT_SETTINGS, ...config };
-
+    
+    // Validate settings
     if (!Array.isArray(settings.fieldsToIndex) || settings.fieldsToIndex.length === 0) {
-        console.warn(`[Search Plugin] Skipping index generation for ${basePath}: 'fieldsToIndex' is missing or empty in config.`);
+        console.warn(`[Search Plugin] Skipping - invalid fieldsToIndex`);
         return;
     }
     if (typeof settings.idField !== 'string' || !settings.idField) {
-         console.warn(`[Search Plugin] Skipping index generation for ${basePath}: 'idField' is missing or invalid in config.`);
+        console.warn(`[Search Plugin] Skipping - invalid idField`);
         return;
     }
-     if (typeof settings.minWordLength !== 'number' || settings.minWordLength < 1) {
-         console.warn(`[Search Plugin] Invalid 'minWordLength' (${settings.minWordLength}) in config for ${basePath}. Using default: ${DEFAULT_SETTINGS.minWordLength}`);
-         settings.minWordLength = DEFAULT_SETTINGS.minWordLength;
+    if (typeof settings.minWordLength !== 'number' || settings.minWordLength < 1) {
+        settings.minWordLength = DEFAULT_SETTINGS.minWordLength;
+
     }
     if (typeof settings.prefixLength !== 'number' || settings.prefixLength < 1) {
-         console.warn(`[Search Plugin] Invalid 'prefixLength' (${settings.prefixLength}) in config for ${basePath}. Using default: ${DEFAULT_SETTINGS.prefixLength}`);
-         settings.prefixLength = DEFAULT_SETTINGS.prefixLength;
+        settings.prefixLength = DEFAULT_SETTINGS.prefixLength;
+
     }
 
-    console.log(`[Search Plugin] Using settings:`, settings);
+    // Initialize index structure with proper Set objects
+    const prefixIndexes = new Map();
 
-
-    const prefixIndexes = {}; // { prefix: { word: Set<id> } }
 
     data.forEach((doc, docIndex) => {
         const docId = doc[settings.idField];
         if (docId === undefined || docId === null) {
-            console.warn(`[Search Plugin] Document at index ${docIndex} missing ID field '${settings.idField}'. Skipping.`);
+            console.warn(`Document ${docIndex} missing ID - skipping`);
             return;
         }
 
-        let tokens = [];
-        settings.fieldsToIndex.forEach(field => {
-            tokens = tokens.concat(tokenize(doc[field], settings.minWordLength));
-        });
+        // Collect and tokenize all fields
+        const tokens = settings.fieldsToIndex.flatMap(field => 
+            tokenize(doc[field], settings.minWordLength)
+        );
 
-        // Deduplicate tokens for this document before processing
-        const uniqueTokens = [...new Set(tokens)];
 
-        uniqueTokens.forEach((word) => {
-            if (word.length < settings.prefixLength) return; // Skip words shorter than prefix length
 
-            const prefix = word.slice(0, settings.prefixLength);
 
-            if (!prefixIndexes[prefix]) {
-                prefixIndexes[prefix] = {};
+
+
+
+        // Process unique tokens only
+        new Set(tokens).forEach(word => {
+            if (word.length < settings.prefixLength) return;
+
+            const prefix = word.substring(0, settings.prefixLength);
+            
+            // Initialize prefix if not exists
+            if (!prefixIndexes.has(prefix)) {
+                prefixIndexes.set(prefix, new Map());
             }
-            if (!prefixIndexes[prefix][word]) {
-                prefixIndexes[prefix][word] = new Set();
+
+            const prefixMap = prefixIndexes.get(prefix);
+            
+            // Initialize word Set if not exists
+            if (!prefixMap.has(word)) {
+                prefixMap.set(word, new Set());
             }
-            prefixIndexes[prefix][word].add(docId);
+
+            // Add document ID to the Set
+            prefixMap.get(word).add(docId);
         });
     });
 
-    // Convert Sets to Arrays for JSON serialization
-    for (const prefix in prefixIndexes) {
-        for (const word in prefixIndexes[prefix]) {
-            prefixIndexes[prefix][word] = Array.from(prefixIndexes[prefix][word]).sort(); // Sort IDs for consistencyAdd commentMore actions
-        }
-    }
+    // Convert to serializable format
+    const serializableIndex = {};
+    prefixIndexes.forEach((wordMap, prefix) => {
+        serializableIndex[prefix] = {};
+        wordMap.forEach((idSet, word) => {
+            serializableIndex[prefix][word] = Array.from(idSet).sort();
+        });
+    });
 
+    // Write to files
     const searchIndexDir = path.join(outputDir, basePath, settings.outputSubDir);
     await fs.mkdir(searchIndexDir, { recursive: true });
 
-    const prefixes = Object.keys(prefixIndexes).sort();
+    const prefixes = Object.keys(serializableIndex).sort();
     const generatedFiles = [];
 
-    await Promise.all(
-        prefixes.map(async (prefix) => {
-            const filePath = path.join(searchIndexDir, `${prefix}.json`);
-            await writeJsonFile(filePath, prefixIndexes[prefix]);
-            generatedFiles.push(filePath);
-            fileCounter.increment(); // Use shared counter
-        })
-    );
+    await Promise.all(prefixes.map(async prefix => {
+        const filePath = path.join(searchIndexDir, `${prefix}.json`);
+        await writeJsonFile(filePath, { [prefix]: serializableIndex[prefix] });
+        generatedFiles.push(filePath);
+        fileCounter.increment();
+    }));
 
-    console.log(`[Search Plugin] Generated ${prefixes.length} search index files for ${basePath} in ${searchIndexDir}.`);
+    console.log(`[Search Plugin] Generated ${prefixes.length} index files for ${basePath}`);
     if (prefixes.length > 0) {
-         console.log(` -> Example: ${generatedFiles.slice(0, Math.min(3, generatedFiles.length)).map(f => path.relative(outputDir, f)).join(', ')}`);
+        console.log(` -> Example: ${generatedFiles.slice(0, 3).map(f => path.relative(outputDir, f)).join(', ')}`);
     }
-     console.log(''); // Add newline
+
 }
 
 module.exports = {
-    generateSearchIndex,
+    generateSearchIndex
 };
