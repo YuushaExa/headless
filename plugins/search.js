@@ -97,7 +97,7 @@ async function generateSearchIndex({ data, outputDir, basePath, config, fileCoun
     });
 
     // Convert to serializable format
-    const serializableIndex = {};
+  const serializableIndex = {};
     prefixIndexes.forEach((wordMap, prefix) => {
         serializableIndex[prefix] = {};
         wordMap.forEach((idSet, word) => {
@@ -114,7 +114,8 @@ async function generateSearchIndex({ data, outputDir, basePath, config, fileCoun
 
     await Promise.all(prefixes.map(async prefix => {
         const filePath = path.join(searchIndexDir, `${prefix}.json`);
-        await writeJsonFile(filePath, { [prefix]: serializableIndex[prefix] });
+        // Write just the word map instead of the wrapped object
+        await writeJsonFile(filePath, serializableIndex[prefix]);
         generatedFiles.push(filePath);
         fileCounter.increment();
     }));
