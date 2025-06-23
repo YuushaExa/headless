@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS = {
 
 
 async function writeJsonFile(filePath, data) {
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+ await fs.writeFile(filePath, JSON.stringify(data));
 }
 
 
